@@ -1,0 +1,36 @@
+Project
+    - Restructure project
+    - Refactor stuff on the go
+
+Lexer
+    - Parse reseved words (now)
+    - Parse strings
+    - Parse brackets
+    - Simples types
+        - How to have Token store different types of values
+        - Parse digit/string and store to Token type
+    - Parse comments
+    - Parse functions
+    - Parse imports
+
+Error Logging:
+    - Lexer show detected errors (some errors DONE)
+    - Restriction on size of variables and numbers/digits
+
+Lexer/Parser:
+    - How to store values local/global/pointers
+
+Parser:
+    - Implement stack for operations
+        - Parse simple operations
+        - Parse variables
+        - Parse brackets
+        - Parse variable types
+        - Parse functions
+
+Advanced parsing:
+    - Recursive functions
+    - Multiple files
+    - Multiple variables within files
+    - Global variables
+    - Projects

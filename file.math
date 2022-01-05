@@ -1,0 +1,20 @@
+decl a = 10
+decl b[]
+decl c = 10
+
+decl func testVariable() =  {
+    a < c ? true : false
+} (bool)
+
+b = testVariable()
+
+# .............................................
+# .............................................
+# .............................................
+# 123 123 decl .............................................
+
+decl func populateArray(startRange: int, endRange: int) =  {
+
+} (array)
+
+b = populateArray(1, 100)

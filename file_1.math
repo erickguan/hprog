@@ -1,0 +1,8 @@
+(package main)
+
+(declare (int8 a) 1)
+(declare (int8 b) 2)
+(declare (int8 c) 3)
+
+(< a b c) # smallest
+(> a b c) # largest
