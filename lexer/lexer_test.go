@@ -1,9 +1,10 @@
 package lexer
 
 import (
-	"hprog/token"
 	"reflect"
 	"testing"
+
+	"github.com/badc0re/hprog/token"
 )
 
 func TestParsingNumber(t *testing.T) {
@@ -33,9 +34,9 @@ func TestParsingString(t *testing.T) {
 
 func TestParsingExpression(t *testing.T) {
 	caseMap := map[string][]token.TokenType{
-		"1 + 2":                          []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER, token.NUMBER},
+		"1 + 2":                          []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
 		"1.2 + 3":                        []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
-		"((1 + 2) - 3)":                  []token.TokenType{token.OP, token.OP, token.NUMBER, token.PLUS, token.NUMBER, token.CP, token.MINUS, token.NUMBER, token.CP, token.CP},
+		"((1 + 2) - 3)":                  []token.TokenType{token.OP, token.OP, token.NUMBER, token.PLUS, token.NUMBER, token.CP, token.MINUS, token.NUMBER, token.CP},
 		"a = 4":                          []token.TokenType{token.IDENTIFIER, token.ASSIGN, token.NUMBER},
 		"a = b + c":                      []token.TokenType{token.IDENTIFIER, token.ASSIGN, token.IDENTIFIER, token.PLUS, token.IDENTIFIER},
 		"decl a = 10":                    []token.TokenType{token.DECLARE, token.IDENTIFIER, token.ASSIGN, token.NUMBER},
@@ -43,8 +44,8 @@ func TestParsingExpression(t *testing.T) {
 		"(a >= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.GREATER_EQUAL, token.NUMBER, token.CP},
 		"(a <= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.LESS_EQUAL, token.NUMBER, token.CP},
 		"if":                             []token.TokenType{token.IF},
-		"(false == true)":                []token.TokenType{token.OP, token.EQUAL_EQUAL, token.BOOL_FALSE, token.BOOL_TRUE, token.CP},
-		"decl b = 10; # (if equal true)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.ASSIGN, token.NUMBER, token.COLON, token.COMMENT},
+		"(false == true)":                []token.TokenType{token.OP, token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE, token.CP},
+		"decl b = 10; # (if equal true)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.ASSIGN, token.NUMBER, token.SEMICOLON, token.COMMENT},
 	}
 	evalExpr(t, caseMap)
 }

@@ -1,51 +1,14 @@
-/*
-package main
-
-import (
-	"bufio"
-	"fmt"
-	"hprog/lexer"
-	"hprog/token"
-	"os"
-)
-
-func readline(idet string, scanner *bufio.Scanner) bool {
-	fmt.Print(idet)
-	return scanner.Scan()
-}
-
-func main() {
-	fopen, _ := os.Open("./file.math")
-
-	fbuffer := make([]byte, 1024)
-
-	data, _ := fopen.Read(fbuffer)
-
-	expression := string(fbuffer[:data])
-
-	// TODO: get the tokens
-	lex := lexer.Init(expression)
-	for tkn := range lex.Consume() {
-		// NOTE: i don't like this
-		token.Print(tkn)
-	}
-
-	//st := stack.Stack{}
-
-	defer fopen.Close()
-}
-*/
-
 package main
 
 import (
 	"bufio"
 	"flag"
 	"fmt"
-	"hprog/lexer"
-	"hprog/token"
 	"os"
 	"strings"
+
+	"github.com/badc0re/hprog/lexer"
+	"github.com/badc0re/hprog/token"
 )
 
 func readline(idet string, scanner *bufio.Scanner) bool {
@@ -81,7 +44,7 @@ func main() {
 	} else {
 		const idet = "hprog> "
 
-		fmt.Println("Hprog Version 0.0.0.0.0.0.0.0.2")
+		fmt.Println("Hprog Version 0.01")
 		fmt.Println("One way to escape, ctr-c to exit.")
 
 		scanner := bufio.NewScanner(os.Stdin)

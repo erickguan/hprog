@@ -3,12 +3,13 @@ package lexer
 import (
 	"bytes"
 	"fmt"
-	"hprog/errors"
-	"hprog/token"
 	"io"
 	"os"
 	"strings"
 	"unicode"
+
+	"github.com/badc0re/hprog/errors"
+	"github.com/badc0re/hprog/token"
 )
 
 func IsDigit(ch rune) bool { return unicode.IsDigit(ch) }
@@ -81,27 +82,13 @@ func (lex *Lexer) skipComment() {
 }
 
 func (lex *Lexer) emit(tokenType token.TokenType) {
-	tkn := token.Token{
+	lex.tokens <- token.Token{
 		Type:     tokenType,
 		Position: lex.Scanner.Position,
 		Line:     lex.Scanner.Line,
 		Value:    lex.Scanner.buf.String(),
 	}
-	if lex.Scanner.buf.Len() != 0 {
-		//fmt.Print(lex.Scanner.buf.String(), " ")
-	}
-	// b is temporary
-	token.Print(tkn)
-	lex.tokens <- tkn
-	/*
-		lex.tokens <- token.Token{
-			Type:     tokenType,
-			Position: lex.Scanner.Position,
-			Line:     lex.Scanner.Line,
-		}
-	*/
 	lex.Scanner.buf.Reset()
-	lex.Scanner.Position = 1
 }
 
 func (lex *Lexer) scanDigit() error {
@@ -157,6 +144,7 @@ func (lex *Lexer) identifierToReseved(ttype token.TokenType) token.TokenType {
 func (lex *Lexer) scanConditions(rcurrent token.TokenType, rfuture token.TokenType) token.TokenType {
 	ch, _ := lex.Scanner.peek()
 	if ch == '=' {
+		lex.Scanner.read()
 		return rfuture
 	}
 	return rcurrent
@@ -209,6 +197,30 @@ loop:
 			case '#':
 				lex.emit(token.COMMENT)
 				lex.skipComment()
+			case '+':
+				lex.emit(token.PLUS)
+			case '-':
+				lex.emit(token.MINUS)
+			case '/':
+				lex.emit(token.SLASH)
+			case '*':
+				lex.emit(token.STAR)
+			case '(':
+				lex.emit(token.OP)
+			case ')':
+				lex.emit(token.CP)
+			case '{':
+				lex.emit(token.LB)
+			case '}':
+				lex.emit(token.RB)
+			case ',':
+				lex.emit(token.COMMA)
+			case '.':
+				lex.emit(token.DOT)
+			case ';':
+				lex.emit(token.SEMICOLON)
+			case ':':
+				lex.emit(token.COLON)
 			case '!':
 				// TODO: is it a condition first
 				rtoken := lex.scanConditions(token.EXCL, token.EXCL_EQUAL)
@@ -233,7 +245,6 @@ loop:
 					lex.emit(token.ERR)
 				}
 			default:
-				token.TokenMap
 			}
 		}
 	}
@@ -251,7 +262,7 @@ func Init(expression string) Lexer {
 	lex := Lexer{
 		Scanner: &TokenScanner{
 			Reader:   strings.NewReader(expression),
-			Position: 1,
+			Position: 0,
 			Line:     1,
 		},
 		tokens: make(chan token.Token),
