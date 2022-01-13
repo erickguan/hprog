@@ -1,8 +1,10 @@
 package stack
 
+import "github.com/badc0re/hprog/value"
+
 type (
 	Node struct {
-		value interface{}
+		value value.Value
 		prev  *Node
 	}
 	Stack struct {
@@ -10,7 +12,7 @@ type (
 	}
 )
 
-func (stack *Stack) Push(value interface{}) {
+func (stack *Stack) Push(value value.Value) {
 	node := &Node{value, &Node{}}
 	if stack.top == nil {
 		stack.top = node
@@ -20,10 +22,7 @@ func (stack *Stack) Push(value interface{}) {
 	}
 }
 
-func (stack *Stack) Pop() interface{} {
-	if stack.top == nil {
-		return nil
-	}
+func (stack *Stack) Pop() value.Value {
 	value := stack.top.value
 	prev := stack.top.prev
 	stack.top = prev
