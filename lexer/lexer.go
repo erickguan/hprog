@@ -123,7 +123,8 @@ func (lex *Lexer) scanIdentifier() (token.TokenType, error) {
 			}
 		*/
 		// to allow int8
-		if IsLetter(ch) || IsDigit(ch) {
+		if IsLetter(ch) {
+			//|| IsDigit(ch)
 			ch, _ := lex.Scanner.read()
 			lex.Scanner.buf.WriteRune(ch)
 		} else {
@@ -156,8 +157,6 @@ func (lex *Lexer) extractString() bool {
 }
 
 func fullScan(lex *Lexer) stateFunc {
-	// NOTE: i don't like this
-	// can it be recrusive?
 loop:
 	for {
 		ch, err := lex.Scanner.read()
@@ -245,6 +244,7 @@ loop:
 					lex.emit(token.ERR)
 				}
 			default:
+				reportError(lex.Scanner, "Token not recognized!")
 			}
 		}
 	}
