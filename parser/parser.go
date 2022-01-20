@@ -34,7 +34,7 @@ func TestParser(expression string) {
 		chunk.DissasChunk(&chk, "simple instruction")
 	*/
 
-	v.Interpret("1 + 2 + a")
+	v.Interpret("1+2+3")
 	v.FreeVM()
 	// freeChunk(&chk)
 	// freeChunk(&chk)

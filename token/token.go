@@ -25,7 +25,7 @@ const (
 
 	COLON
 
-	ASSIGN
+	EQUAL
 
 	GREATER
 	GREATER_EQUAL
@@ -50,11 +50,17 @@ const (
 	DEFINE
 	DECLARE
 	FUNCTION
+	PRINT
+	RETURN
+	VAR
+	WHILE
 
 	ARGS
 
 	AND
 	OR
+
+	CLASS
 
 	BOOL_FALSE
 	BOOL_TRUE
@@ -92,7 +98,7 @@ var TokenMap = map[string]TokenType{
 	"!=": EXCL_EQUAL,
 	"<":  LESS,
 	"<=": LESS_EQUAL,
-	"=":  ASSIGN,
+	"=":  EQUAL,
 	"==": EQUAL_EQUAL,
 
 	// Keywords
@@ -102,7 +108,8 @@ var TokenMap = map[string]TokenType{
 	"define": DEFINE,
 	"decl":   DECLARE,
 
-	"for": FOR,
+	"for":   FOR,
+	"while": WHILE,
 
 	"args": ARGS,
 
@@ -112,8 +119,11 @@ var TokenMap = map[string]TokenType{
 	"false": BOOL_FALSE,
 	"true":  BOOL_TRUE,
 
-	"#":    COMMENT,
-	"func": FUNCTION,
+	"#":      COMMENT,
+	"func":   FUNCTION,
+	"print":  PRINT,
+	"return": RETURN,
+	"var":    VAR,
 
 	// reserver
 	// for
@@ -139,8 +149,8 @@ func reverseMap(m map[string]TokenType) map[TokenType]string {
 
 type Token struct {
 	Type     TokenType
-	Position int
-	Line     int
+	Position uint
+	Line     uint
 	Value    string
 }
 

@@ -25,8 +25,8 @@ func reportError(ts *TokenScanner, what string) {
 
 type TokenScanner struct {
 	Reader   io.RuneScanner
-	Position int
-	Line     int
+	Position uint
+	Line     uint
 	buf      bytes.Buffer
 }
 
@@ -161,6 +161,7 @@ loop:
 	for {
 		ch, err := lex.Scanner.read()
 		if err == io.EOF {
+			lex.emit(token.EOF)
 			break loop
 		}
 
@@ -226,7 +227,7 @@ loop:
 				lex.emit(rtoken)
 			case '=':
 				// TODO: is it a condition first
-				rtoken := lex.scanConditions(token.ASSIGN, token.EQUAL_EQUAL)
+				rtoken := lex.scanConditions(token.EQUAL, token.EQUAL_EQUAL)
 				lex.emit(rtoken)
 			case '<':
 				// TODO: is it a condition first
