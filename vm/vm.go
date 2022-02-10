@@ -58,24 +58,33 @@ func (vm *VM) ReadConstant() value.Value {
 	return vm.chunk.Constants.Values[index]
 }
 
-func (vm *VM) binaryOP(op string) {
+func (vm *VM) binaryOP(op string) INTER_RESULT {
 	b := vm.stack.Pop()
 	a := vm.stack.Pop()
+
+	if a.VT != value.VT_NUMBER &&
+		b.VT != value.VT_NUMBER {
+		// error
+		fmt.Println("AA")
+		return INTER_RUNTIME_ERROR
+	}
 	switch op {
 	case "+":
-		vm.stack.Push(a + b)
+		vm.stack.Push(value.Add(&a, &b))
 	case "-":
-		vm.stack.Push(a - b)
+		vm.stack.Push(value.Sub(&a, &b))
 	case "/":
-		vm.stack.Push(a / b)
+		vm.stack.Push(value.Divide(&a, &b))
 	case "*":
-		vm.stack.Push(a * b)
+		vm.stack.Push(value.Multiply(&a, &b))
 	}
+	return INTER_OK
 }
 
 func (v *VM) run() INTER_RESULT {
 	for {
 		instruct := v.Move()
+
 		switch instruct {
 		case codes.INSTRUC_CONSTANT:
 			// fmt.Println("CONST")
@@ -92,10 +101,10 @@ func (v *VM) run() INTER_RESULT {
 		case codes.INSTRUC_DIVIDE:
 			v.binaryOP("/")
 		case codes.INSTRUC_NEGATE:
-			v.stack.Push(-v.stack.Pop())
+			v.stack.Push(value.Negate(v.stack.Pop()))
 		case codes.INSTRUC_RETURN:
 			fmt.Println("RETURN")
-			//fmt.Println("STACK POP:", v.stack.Pop())
+			fmt.Printf("STACK POP:, %#v", v.stack.Pop())
 			return INTER_OK
 		}
 	}
@@ -136,7 +145,7 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 		token.NUMBER:        {p.Number, nil, PREC_NONE},
 		token.AND:           {nil, nil, PREC_NONE},
 		// maybe not
-		token.CLASS:      {nil, nil, PREC_NONE},
+		// token.CLASS:      {nil, nil, PREC_NONE},
 		token.ELSE:       {nil, nil, PREC_NONE},
 		token.BOOL_FALSE: {nil, nil, PREC_NONE},
 		token.FOR:        {nil, nil, PREC_NONE},
@@ -158,6 +167,7 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	p.Advance()
 	p.Expression()
 	p.Consume(token.EOF, "Expected end.")
+	fmt.Println("AA")
 	p.endCompile()
 
 	if p.perror {
@@ -295,7 +305,7 @@ func (p *Parser) makeConstant(v value.Value) uint {
 func (p *Parser) Number() {
 	b, _ := strconv.ParseFloat(p.previous.Value, 64)
 	// NOTE: change this
-	p.emitVariable(value.Value(b))
+	p.emitVariable(value.Create(b, value.VT_NUMBER))
 }
 
 func (p *Parser) Grouping() {
@@ -332,6 +342,7 @@ func (v *VM) Interpret(source string) INTER_RESULT {
 		// parser.perror = true
 		return INTER_COMPILE_ERROR
 	}
+
 	chunk.DissasChunk(&chk, "test")
 	if len(chk.Code) != 0 {
 		v.chunk = &chk
