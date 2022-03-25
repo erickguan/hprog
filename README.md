@@ -1,40 +1,64 @@
 # Hel programming language
 
+Dynamically-typed programming language with the scope of providing functionallity
+of processing data by using the internal goroutines.
 
-## Lexer
-- Change handling of error messages, instead of bools, use a wrapper for the errors
-- Parsing numbers
-    - No double
-    - No negative
-- parsing print stuff
-    - not implemented
-- how to use print?
-- 1..10 (ranges)
-    - not implemented
-- .11 floats starting with dot
-    - not allowed
+## Principles:
 
-## Parse
-- Types
+- What is written, will be changed
+- “Simple” is a process, not a goal
+- Production ready from the start
 
-## Supported features
-- Conditional statements (not)
-- Loops (not)
-- Functions (not)
-- Types (not)
-- Data structures (not)
-    - list
-    - dict
-    - set
-- anonymous functions (not)
-- function aliases (not)
-- lambda functions (not)
-- Functional transformations (not)
-    - map, filter, reduce
-- Structs (not)
-- Concurrency (not)
+## Top goals/questions
+- How to split a structure in batches so it can have operations done concurrently.
+- How do you achieve map-reduce on large datasets with lazy loading using concurrency
 
-Sub-features:
-- Immutability (not)
-- Pure functions (not)
-- Lazy evaluation? (not)
+VARIABLES
+
+- Variable declaration
+
+```
+decl a = 10
+decl b[]
+decl c = 10
+```
+
+- Variable type declaration
+# https://go101.org/article/type-system-overview.html
+
+```
+decl int8 a = 10
+decl string b[]
+decl int8 c = 10
+```
+
+# .............................................
+
+CONTROL FLOW EXPRESSIONS
+
+---
+
+
+FUNCTIONS
+
+```
+decl fn testVariable() {
+    return a < c ? true : false
+} (bool)
+
+decl fn testVariable() =  {
+    a < c ? true : false
+} (bool)
+
+decl cncr fn testVariable() =  {
+    a < c ? true : false
+} (bool)
+
+b = testVariable()
+
+decl func populateArray(startRange: int, endRange: int) =  {
+    ...
+} (array)
+
+b = populateArray(1, 100)
+```

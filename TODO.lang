@@ -17,11 +17,13 @@ decl int8 c = 10
 # .............................................
 
 CONTROL FLOW EXPRESSIONS
-https://docs.python.org/3/tutorial/controlflow.html
+
+--- 
+
 
 FUNCTIONS
 
-decl fnc testVariable() {
+decl fn testVariable() {
     return a < c ? true : false
 } (bool)
 
@@ -36,7 +38,7 @@ decl cncr fn testVariable() =  {
 b = testVariable()
 
 decl func populateArray(startRange: int, endRange: int) =  {
-
+    ...
 } (array)
 
 b = populateArray(1, 100)
