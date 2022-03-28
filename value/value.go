@@ -1,6 +1,9 @@
 package value
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 /*
 type Variable struct {
@@ -27,13 +30,20 @@ const (
 
 	VT_BOOL
 	VT_NIL
+
+	VT_FLOAT
+	VT_INT
+	VT_COMPLEX
+	VT_HEX
+
 	VT_NUMBER
 )
 
 type V struct {
-	b   bool
-	i   int
-	f64 float64
+	_bool bool
+	_int  int
+	_f64  float64
+	_nil  bool
 }
 type Value struct {
 	VT VALUE_TYPE
@@ -44,22 +54,35 @@ func PrintValue(value Value) {
 	fmt.Printf("val: %g\n", value)
 }
 
-// NOTE: Don't like this at all!
-func Add(a *Value, b *Value) Value {
-	t := a._V.f64 + b._V.f64
+func NewBool(value bool, vt VALUE_TYPE) Value {
 	return Value{
-		_V: V{f64: t},
-		VT: VT_NUMBER,
+		_V: V{_bool: value},
+		VT: VT_BOOL,
 	}
 }
 
-// meh, NO!
-func Create(t interface{}, vt VALUE_TYPE) Value {
+func New(rawValue string, vt VALUE_TYPE) Value {
 	switch vt {
-	case VT_NUMBER:
+	case VT_INT:
+		b, _ := strconv.Atoi(rawValue)
+		// int32
 		return Value{
-			_V: V{f64: t.(float64)},
-			VT: VT_NUMBER,
+			_V: V{_int: b},
+			VT: VT_INT,
+		}
+	case VT_FLOAT:
+		// float64
+		b, _ := strconv.ParseFloat(rawValue, 64)
+		return Value{
+			_V: V{_f64: b},
+			VT: VT_FLOAT,
+		}
+	//case VT_COMPLEX:
+	//case VT_HEX:
+	case VT_NIL:
+		return Value{
+			_V: V{_nil: true},
+			VT: VT_NIL,
 		}
 	default:
 		// should never reach here!!!!
@@ -67,38 +90,58 @@ func Create(t interface{}, vt VALUE_TYPE) Value {
 	}
 }
 
-func Sub(a *Value, b *Value) Value {
-
-	t := a._V.f64 - b._V.f64
+func Add(a *Value, b *Value) Value {
+	t := a._V._f64 + b._V._f64
 	return Value{
-		_V: V{f64: t},
+		_V: V{_f64: t},
+		VT: VT_NUMBER,
+	}
+}
+
+func Sub(a *Value, b *Value) Value {
+	t := a._V._f64 - b._V._f64
+	return Value{
+		_V: V{_f64: t},
 		VT: VT_NUMBER,
 	}
 }
 
 func Divide(a *Value, b *Value) Value {
-	t := a._V.f64 / b._V.f64
+	t := a._V._f64 / b._V._f64
 	return Value{
-		_V: V{f64: t},
+		_V: V{_f64: t},
 		VT: VT_NUMBER,
 	}
 }
 
 func Multiply(a *Value, b *Value) Value {
-	t := a._V.f64 * b._V.f64
+	t := a._V._f64 * b._V._f64
 	return Value{
-		_V: V{f64: t},
+		_V: V{_f64: t},
 		VT: VT_NUMBER,
 	}
 }
 
 func Negate(a Value) Value {
-	if a.VT != VT_NUMBER {
+	if !IsNumberType(a.VT) {
 		// error
 	}
-	t := -a._V.f64
+	t := -a._V._f64
 	return Value{
-		_V: V{f64: t},
+		_V: V{_f64: t},
 		VT: VT_NUMBER,
 	}
 }
+
+func DetectNumberTypeByConversion(v string) VALUE_TYPE {
+	if _, err := strconv.Atoi(v); err == nil {
+		return VT_INT
+	}
+	if _, err := strconv.ParseFloat(v, 64); err == nil {
+		return VT_FLOAT
+	}
+	return VT_NIL
+}
+
+func IsNumberType(v VALUE_TYPE) bool  { return v == VT_FLOAT || v == VT_INT }
+func IsBooleanType(v VALUE_TYPE) bool { return v == VT_BOOL }

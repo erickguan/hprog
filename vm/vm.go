@@ -3,7 +3,6 @@ package vm
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/badc0re/hprog/chunk"
 	"github.com/badc0re/hprog/codes"
@@ -32,11 +31,24 @@ const (
 
 type ParseFn func()
 
+//type OpFn func()
+
 type ParseRule struct {
 	prefix ParseFn
 	infix  ParseFn
 	prec   PREC
 }
+
+/*
+type OpRule struct {
+	opfn OpFn
+}
+
+type OpKey struct {
+	a value.VALUE_TYPE
+	b value.VALUE_TYPE
+}
+*/
 
 func (vm *VM) InitVM() {
 
@@ -62,12 +74,14 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 	b := vm.stack.Pop()
 	a := vm.stack.Pop()
 
-	if a.VT != value.VT_NUMBER &&
-		b.VT != value.VT_NUMBER {
-		// error
-		fmt.Println("AA")
+	// allow "+" for strings
+	if !(value.IsNumberType(a.VT) &&
+		value.IsNumberType(b.VT)) {
+		// works!
+		fmt.Println("bla")
 		return INTER_RUNTIME_ERROR
 	}
+
 	switch op {
 	case "+":
 		vm.stack.Push(value.Add(&a, &b))
@@ -87,11 +101,17 @@ func (v *VM) run() INTER_RESULT {
 
 		switch instruct {
 		case codes.INSTRUC_CONSTANT:
-			// fmt.Println("CONST")
 			constant := v.ReadConstant()
-			// value.PrintValue(constant)
+			value.PrintValue(constant)
 			v.stack.Push(constant)
 			break
+		case codes.INSTRUC_NIL:
+		case codes.INSTRUC_TRUE:
+			// TODO: change
+			v.stack.Push(value.NewBool(true, value.VT_BOOL))
+		case codes.INSTRUC_FALSE:
+			// TODO: change
+			v.stack.Push(value.NewBool(false, value.VT_BOOL))
 		case codes.INSTRUC_ADDITION:
 			v.binaryOP("+")
 		case codes.INSTRUC_SUBSTRACT:
@@ -101,7 +121,13 @@ func (v *VM) run() INTER_RESULT {
 		case codes.INSTRUC_DIVIDE:
 			v.binaryOP("/")
 		case codes.INSTRUC_NEGATE:
-			v.stack.Push(value.Negate(v.stack.Pop()))
+			_v := v.stack.Pop()
+			if !(value.IsNumberType(_v.VT) ||
+				value.IsBooleanType(_v.VT)) {
+				// error
+				return INTER_RUNTIME_ERROR
+			}
+			v.stack.Push(value.Negate(_v))
 		case codes.INSTRUC_RETURN:
 			fmt.Println("RETURN")
 			fmt.Printf("STACK POP:, %#v", v.stack.Pop())
@@ -120,6 +146,14 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 		lex: &lex,
 		chk: chk,
 	}
+	/*
+			opMap := map[OpKey]OpRule{
+				OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: {nil},
+				OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   {nil},
+				OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   {nil},
+			}
+		fmt.Println(opMap)
+	*/
 	tknMap := map[token.TokenType]ParseRule{
 		token.OP:            {p.Grouping, nil, PREC_NONE},
 		token.CP:            {nil, nil, PREC_NONE},
@@ -147,27 +181,27 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 		// maybe not
 		// token.CLASS:      {nil, nil, PREC_NONE},
 		token.ELSE:       {nil, nil, PREC_NONE},
-		token.BOOL_FALSE: {nil, nil, PREC_NONE},
+		token.BOOL_FALSE: {p.Literal, nil, PREC_NONE},
 		token.FOR:        {nil, nil, PREC_NONE},
 		token.FUNCTION:   {nil, nil, PREC_NONE},
 		token.IF:         {nil, nil, PREC_NONE},
-		token.NIL:        {nil, nil, PREC_NONE},
+		token.NIL:        {p.Literal, nil, PREC_NONE},
 		token.OR:         {nil, nil, PREC_NONE},
 		token.PRINT:      {nil, nil, PREC_NONE},
 		token.RETURN:     {nil, nil, PREC_NONE},
 		//token.SUPER:     {nil, nil, PREC_NONE},
 		//token.THIS:     {nil, nil, PREC_NONE},
-		token.VAR:   {nil, nil, PREC_NONE},
-		token.WHILE: {nil, nil, PREC_NONE},
-		token.ERR:   {nil, nil, PREC_NONE},
-		token.EOF:   {nil, nil, PREC_NONE},
+		token.BOOL_TRUE: {p.Literal, nil, PREC_NONE},
+		token.VAR:       {nil, nil, PREC_NONE},
+		token.WHILE:     {nil, nil, PREC_NONE},
+		token.ERR:       {nil, nil, PREC_NONE},
+		token.EOF:       {nil, nil, PREC_NONE},
 	}
 	p.tknMap = tknMap
 
 	p.Advance()
 	p.Expression()
 	p.Consume(token.EOF, "Expected end.")
-	fmt.Println("AA")
 	p.endCompile()
 
 	if p.perror {
@@ -237,11 +271,11 @@ func (p *Parser) ParsePrec(prec PREC) {
 }
 
 func (p *Parser) Unary() {
-	instrType := p.previous.Type
+	tknType := p.previous.Type
 
 	p.ParsePrec(PREC_UNARY)
 
-	switch instrType {
+	switch tknType {
 	case token.MINUS:
 		p.emit(codes.INSTRUC_NEGATE)
 		break
@@ -251,11 +285,11 @@ func (p *Parser) Unary() {
 }
 
 func (p *Parser) Binary() {
-	instrType := p.previous.Type
-	rule := p.getRule(instrType)
+	tknType := p.previous.Type
+	rule := p.getRule(tknType)
 	p.ParsePrec(rule.prec + 1)
 
-	switch instrType {
+	switch tknType {
 	case token.PLUS:
 		p.emit(codes.INSTRUC_ADDITION)
 		break
@@ -275,10 +309,6 @@ func (p *Parser) Binary() {
 
 func (p *Parser) emit(code interface{}) {
 	p.chk.WriteChunk(code, p.previous.Line)
-}
-
-func (p *Parser) bla() {
-
 }
 
 func (p *Parser) emit2(code1 interface{}, code2 interface{}) {
@@ -303,9 +333,22 @@ func (p *Parser) makeConstant(v value.Value) uint {
 }
 
 func (p *Parser) Number() {
-	b, _ := strconv.ParseFloat(p.previous.Value, 64)
-	// NOTE: change this
-	p.emitVariable(value.Create(b, value.VT_NUMBER))
+	dt := value.DetectNumberTypeByConversion(p.previous.Value)
+	p.emitVariable(value.New(p.previous.Value, dt))
+}
+
+func (p *Parser) Literal() {
+	tokenType := p.previous.Type
+	switch tokenType {
+	case token.BOOL_FALSE:
+		p.emit(codes.INSTRUC_FALSE)
+	case token.BOOL_TRUE:
+		p.emit(codes.INSTRUC_TRUE)
+	case token.NIL:
+		p.emit(codes.INSTRUC_NIL)
+	default:
+		return
+	}
 }
 
 func (p *Parser) Grouping() {

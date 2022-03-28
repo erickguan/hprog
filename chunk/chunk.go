@@ -60,6 +60,12 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 		return OpInstruction("INSTRUC_DIVIDE", offset)
 	case codes.INSTRUC_NEGATE:
 		return OpInstruction("INSTRUC_NEGATE", offset)
+	case codes.INSTRUC_FALSE:
+		return OpInstruction("INSTRUC_FALSE", offset)
+	case codes.INSTRUC_TRUE:
+		return OpInstruction("INSTRUC_TRUE", offset)
+	case codes.INSTRUC_NIL:
+		return OpInstruction("INSTRUC_NIL", offset)
 	case codes.INSTRUC_RETURN:
 		return OpInstruction("INSTRUC_RETURN", offset)
 	}
@@ -74,6 +80,9 @@ func DissasChunk(chunk *Chunk, name string) {
 	//for pos, opr := range chunk.Code {
 	for offset < chunk.Count {
 		offset = DissasInstruction(chunk, offset)
+		if offset == 0 {
+			break
+		}
 	}
 }
 
