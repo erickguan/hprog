@@ -28,3 +28,10 @@ func (stack *Stack) Pop() value.Value {
 	stack.top = prev
 	return value
 }
+
+func (stack *Stack) Peek() value.Value {
+	value := stack.top.value
+	prev := stack.top.prev
+	stack.top = prev
+	return value
+}

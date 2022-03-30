@@ -95,7 +95,7 @@ func (lex *Lexer) scanDigit() error {
 	lex.Scanner.unread()
 	for {
 		ch, _ := lex.Scanner.peek()
-		if IsDigit(ch) {
+		if IsDigit(ch) || ch == '.' {
 			ch, _ := lex.Scanner.read()
 			lex.Scanner.buf.WriteRune(ch)
 		} else if IsLetter(ch) {

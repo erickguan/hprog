@@ -5,24 +5,6 @@ import (
 	"strconv"
 )
 
-/*
-type Variable struct {
-	vtype string
-	value interface{}
-}
-*/
-
-/*
-type VT_CODE int
-
-const (
-	VT_ILLEGAL VT_CODE = iota
-
-	VT_INT
-	VT_FLOAT
-)
-*/
-
 type VALUE_TYPE int
 
 const (
@@ -61,6 +43,20 @@ func NewBool(value bool, vt VALUE_TYPE) Value {
 	}
 }
 
+func NewInt(value int, vt VALUE_TYPE) Value {
+	return Value{
+		_V: V{_int: value},
+		VT: VT_BOOL,
+	}
+}
+
+func NewFloat(value int, vt VALUE_TYPE) Value {
+	return Value{
+		_V: V{_int: value},
+		VT: VT_BOOL,
+	}
+}
+
 func New(rawValue string, vt VALUE_TYPE) Value {
 	switch vt {
 	case VT_INT:
@@ -91,46 +87,101 @@ func New(rawValue string, vt VALUE_TYPE) Value {
 }
 
 func Add(a *Value, b *Value) Value {
-	t := a._V._f64 + b._V._f64
-	return Value{
-		_V: V{_f64: t},
-		VT: VT_NUMBER,
+	switch a.VT {
+	case VT_FLOAT:
+		t := a._V._f64 + b._V._f64
+		return Value{
+			_V: V{_f64: t},
+			VT: VT_FLOAT,
+		}
+	case VT_INT:
+		t := a._V._int + b._V._int
+		return Value{
+			_V: V{_int: t},
+			VT: VT_INT,
+		}
 	}
+	// TODO: return error!
+	return Value{}
 }
 
 func Sub(a *Value, b *Value) Value {
-	t := a._V._f64 - b._V._f64
-	return Value{
-		_V: V{_f64: t},
-		VT: VT_NUMBER,
+	switch a.VT {
+	case VT_FLOAT:
+		t := a._V._f64 - b._V._f64
+		return Value{
+			_V: V{_f64: t},
+			VT: VT_FLOAT,
+		}
+	case VT_INT:
+		t := a._V._int - b._V._int
+		return Value{
+			_V: V{_int: t},
+			VT: VT_INT,
+		}
 	}
+	// TODO: return error!
+	return Value{}
 }
 
 func Divide(a *Value, b *Value) Value {
-	t := a._V._f64 / b._V._f64
-	return Value{
-		_V: V{_f64: t},
-		VT: VT_NUMBER,
+	switch a.VT {
+	case VT_FLOAT:
+		t := a._V._f64 / b._V._f64
+		return Value{
+			_V: V{_f64: t},
+			VT: VT_FLOAT,
+		}
+	case VT_INT:
+		t := a._V._int / b._V._int
+		return Value{
+			_V: V{_int: t},
+			VT: VT_INT,
+		}
 	}
+	// TODO: return error!
+	return Value{}
 }
 
 func Multiply(a *Value, b *Value) Value {
-	t := a._V._f64 * b._V._f64
-	return Value{
-		_V: V{_f64: t},
-		VT: VT_NUMBER,
+	switch a.VT {
+	case VT_FLOAT:
+		t := a._V._f64 * b._V._f64
+		return Value{
+			_V: V{_f64: t},
+			VT: VT_FLOAT,
+		}
+	case VT_INT:
+		t := a._V._int * b._V._int
+		return Value{
+			_V: V{_int: t},
+			VT: VT_INT,
+		}
 	}
+	// TODO: return error!
+	return Value{}
 }
 
 func Negate(a Value) Value {
 	if !IsNumberType(a.VT) {
 		// error
 	}
-	t := -a._V._f64
-	return Value{
-		_V: V{_f64: t},
-		VT: VT_NUMBER,
+	switch a.VT {
+	case VT_FLOAT:
+		t := -a._V._f64
+		return Value{
+			_V: V{_f64: t},
+			VT: VT_NUMBER,
+		}
+	case VT_INT:
+		t := -a._V._int
+		return Value{
+			_V: V{_int: t},
+			VT: VT_INT,
+		}
 	}
+	// TODO: return error!
+	return Value{}
 }
 
 func DetectNumberTypeByConversion(v string) VALUE_TYPE {
@@ -143,5 +194,31 @@ func DetectNumberTypeByConversion(v string) VALUE_TYPE {
 	return VT_NIL
 }
 
-func IsNumberType(v VALUE_TYPE) bool  { return v == VT_FLOAT || v == VT_INT }
-func IsBooleanType(v VALUE_TYPE) bool { return v == VT_BOOL }
+func ConvertToExpectedType1(a Value, v VALUE_TYPE) Value {
+	_a := a
+	if _a.VT != v {
+		switch v {
+		case VT_INT:
+			_a = Value{
+				_V: V{_int: int(a._V._f64)},
+				VT: v,
+			}
+		case VT_FLOAT:
+			_a = Value{
+				_V: V{_f64: float64(a._V._int)},
+				VT: v,
+			}
+		}
+	}
+	return _a
+}
+
+func ConvertToExpectedType2(a Value, b Value, v VALUE_TYPE) (Value, Value) {
+	a = ConvertToExpectedType1(a, v)
+	b = ConvertToExpectedType1(b, v)
+	return a, b
+}
+
+func IsNumberType(v VALUE_TYPE) bool             { return v == VT_FLOAT || v == VT_INT }
+func IsSameType(a VALUE_TYPE, b VALUE_TYPE) bool { return a == b }
+func IsBooleanType(v VALUE_TYPE) bool            { return v == VT_BOOL }

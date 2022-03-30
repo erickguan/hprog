@@ -12,13 +12,6 @@ import (
 	"github.com/badc0re/hprog/value"
 )
 
-type VM struct {
-	chunk   *chunk.Chunk
-	ip      *interface{}
-	counter int
-	stack   stack.Stack
-}
-
 type INTER_RESULT int
 
 const (
@@ -29,9 +22,44 @@ const (
 	INTER_RUNTIME_ERROR
 )
 
-type ParseFn func()
+type PREC int
 
-//type OpFn func()
+const (
+	PREC_ILLEGAL PREC = iota
+	PREC_NONE
+	PREC_ASSIGN    // =
+	PREC_OR        // or
+	PREC_AND       // and
+	PREC_EQUALLITY // ==, !=
+	PREC_COMPARE   // <, >, <=, >=
+	PREC_TERM      // +, -
+	PREC_FACTOR    // *, /
+	PREC_UNARY     // !, -
+	PREC_CALL      // ., ()
+	PREC_PRIMARY
+)
+
+type VM struct {
+	chunk        *chunk.Chunk
+	ip           *interface{}
+	counter      int
+	stack        stack.Stack
+	valueTypeMap map[OpKey]value.VALUE_TYPE
+}
+
+type Parser struct {
+	current  *token.Token
+	previous *token.Token
+	lex      *lexer.Lexer
+	perror   bool
+	ppanic   bool
+	tknMap   map[token.TokenType]ParseRule
+
+	// todo
+	chk *chunk.Chunk
+}
+
+type ParseFn func()
 
 type ParseRule struct {
 	prefix ParseFn
@@ -39,16 +67,10 @@ type ParseRule struct {
 	prec   PREC
 }
 
-/*
-type OpRule struct {
-	opfn OpFn
-}
-
 type OpKey struct {
 	a value.VALUE_TYPE
 	b value.VALUE_TYPE
 }
-*/
 
 func (vm *VM) InitVM() {
 
@@ -74,11 +96,14 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 	b := vm.stack.Pop()
 	a := vm.stack.Pop()
 
+	if !value.IsSameType(a.VT, b.VT) {
+		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+		a, b = value.ConvertToExpectedType2(a, b, vt)
+	}
 	// allow "+" for strings
 	if !(value.IsNumberType(a.VT) &&
 		value.IsNumberType(b.VT)) {
 		// works!
-		fmt.Println("bla")
 		return INTER_RUNTIME_ERROR
 	}
 
@@ -107,10 +132,8 @@ func (v *VM) run() INTER_RESULT {
 			break
 		case codes.INSTRUC_NIL:
 		case codes.INSTRUC_TRUE:
-			// TODO: change
 			v.stack.Push(value.NewBool(true, value.VT_BOOL))
 		case codes.INSTRUC_FALSE:
-			// TODO: change
 			v.stack.Push(value.NewBool(false, value.VT_BOOL))
 		case codes.INSTRUC_ADDITION:
 			v.binaryOP("+")
@@ -146,14 +169,6 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 		lex: &lex,
 		chk: chk,
 	}
-	/*
-			opMap := map[OpKey]OpRule{
-				OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: {nil},
-				OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   {nil},
-				OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   {nil},
-			}
-		fmt.Println(opMap)
-	*/
 	tknMap := map[token.TokenType]ParseRule{
 		token.OP:            {p.Grouping, nil, PREC_NONE},
 		token.CP:            {nil, nil, PREC_NONE},
@@ -209,35 +224,6 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	}
 	return INTER_OK
 }
-
-type Parser struct {
-	current  *token.Token
-	previous *token.Token
-	lex      *lexer.Lexer
-	perror   bool
-	ppanic   bool
-	tknMap   map[token.TokenType]ParseRule
-
-	// todo
-	chk *chunk.Chunk
-}
-
-type PREC int
-
-const (
-	PREC_ILLEGAL PREC = iota
-	PREC_NONE
-	PREC_ASSIGN    // =
-	PREC_OR        // or
-	PREC_AND       // and
-	PREC_EQUALLITY // ==, !=
-	PREC_COMPARE   // <, >, <=, >=
-	PREC_TERM      // +, -
-	PREC_FACTOR    // *, /
-	PREC_UNARY     // !, -
-	PREC_CALL      // ., ()
-	PREC_PRIMARY
-)
 
 func (p *Parser) Consume(tknType token.TokenType, message string) {
 	if p.current.Type == tknType {
@@ -386,11 +372,22 @@ func (v *VM) Interpret(source string) INTER_RESULT {
 		return INTER_COMPILE_ERROR
 	}
 
+	/* DEBUG */
 	chunk.DissasChunk(&chk, "test")
+
 	if len(chk.Code) != 0 {
+		/* INIT START */
 		v.chunk = &chk
 		v.counter = 0
 		v.ip = &v.chunk.Code[v.counter]
+		valueTypeMap := map[OpKey]value.VALUE_TYPE{
+			OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
+			OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
+			OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
+			OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
+		}
+		v.valueTypeMap = valueTypeMap
+		/* INIT END */
 		return v.run()
 	}
 	return INTER_OK
