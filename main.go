@@ -75,5 +75,5 @@ func main() {
 			}
 		}
 	*/
-	parser.TestParser("true + false")
+	parser.TestParser("1 >= 10")
 }

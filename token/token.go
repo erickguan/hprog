@@ -116,28 +116,26 @@ var TokenMap = map[string]TokenType{
 	"and": AND,
 	"or":  OR,
 
-	"false": BOOL_FALSE,
-	"true":  BOOL_TRUE,
+	"False": BOOL_FALSE,
+	"True":  BOOL_TRUE,
 
 	"#":      COMMENT,
 	"func":   FUNCTION,
 	"print":  PRINT,
 	"return": RETURN,
 	"var":    VAR,
+	"nil":    NIL,
 
-	// reserver
-	// for
-	// dbg
+	// for dbg
 	"<STRING>":     STRING,
 	"<IDENTIFIER>": IDENTIFIER,
 	"<NUMBER>":     NUMBER,
-	"<NIL>":        NIL,
 	// for debugging
 	"ERROR": ERR,
 	"\\0":   EOF,
 }
 
-var ReverseKeys = reverseMap(TokenMap)
+var ReversedTokenMap = reverseMap(TokenMap)
 
 func reverseMap(m map[string]TokenType) map[TokenType]string {
 	n := make(map[TokenType]string)
@@ -155,7 +153,7 @@ type Token struct {
 }
 
 func Print(token Token) {
-	tokenTypeReadable, _ := ReverseKeys[token.Type]
+	tokenTypeReadable, _ := ReversedTokenMap[token.Type]
 	printFormat := "type: %s, position: %d, line:%d, value: %s\n"
 
 	fmt.Printf(printFormat, tokenTypeReadable, token.Position, token.Line, token.Value)

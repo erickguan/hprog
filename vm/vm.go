@@ -12,6 +12,8 @@ import (
 	"github.com/badc0re/hprog/value"
 )
 
+var MAX_STACK_SIZE = 256
+
 type INTER_RESULT int
 
 const (
@@ -43,7 +45,7 @@ type VM struct {
 	chunk        *chunk.Chunk
 	ip           *interface{}
 	counter      int
-	stack        stack.Stack
+	vstack       stack.Stack
 	valueTypeMap map[OpKey]value.VALUE_TYPE
 }
 
@@ -73,11 +75,27 @@ type OpKey struct {
 }
 
 func (vm *VM) InitVM() {
+	vm.vstack = stack.Stack{
+		Sarray: make([]value.Value, MAX_STACK_SIZE),
+		Top:    -1,
+	}
+	valueTypeMap := map[OpKey]value.VALUE_TYPE{
+		OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
+		OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
+		OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
+		OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
+	}
+	vm.valueTypeMap = valueTypeMap
+}
 
+func (vm *VM) ResetStack() {
+	vm.vstack = stack.Stack{
+		Sarray: make([]value.Value, MAX_STACK_SIZE),
+	}
 }
 
 func (vm *VM) FreeVM() {
-
+	vm.vstack = stack.Stack{}
 }
 
 func (vm *VM) Move() interface{} {
@@ -93,8 +111,8 @@ func (vm *VM) ReadConstant() value.Value {
 }
 
 func (vm *VM) binaryOP(op string) INTER_RESULT {
-	b := vm.stack.Pop()
-	a := vm.stack.Pop()
+	b := vm.vstack.Pop()
+	a := vm.vstack.Pop()
 
 	if !value.IsSameType(a.VT, b.VT) {
 		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
@@ -109,53 +127,94 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 
 	switch op {
 	case "+":
-		vm.stack.Push(value.Add(&a, &b))
+		vm.vstack.Push(value.Add(&a, &b))
 	case "-":
-		vm.stack.Push(value.Sub(&a, &b))
+		vm.vstack.Push(value.Sub(&a, &b))
 	case "/":
-		vm.stack.Push(value.Divide(&a, &b))
+		vm.vstack.Push(value.Divide(&a, &b))
 	case "*":
-		vm.stack.Push(value.Multiply(&a, &b))
+		vm.vstack.Push(value.Multiply(&a, &b))
+	case ">":
+		vm.vstack.Push(value.Greater(&a, &b))
+	case "<":
+		vm.vstack.Push(value.Less(&a, &b))
 	}
 	return INTER_OK
 }
 
-func (v *VM) run() INTER_RESULT {
-	for {
-		instruct := v.Move()
+func (v *VM) StackTrace() {
+	fmt.Println("== Stack Trace ==")
+	fmt.Println("[")
+	for i := 0; i < v.vstack.Top+1; i++ {
+		value.PrintValue(i, v.vstack.Sarray[i])
+	}
+	fmt.Println("]")
+	fmt.Printf("== End Stack Trace ==\n\n")
+}
 
+func (vm *VM) run() INTER_RESULT {
+	for {
+		instruct := vm.Move()
 		switch instruct {
 		case codes.INSTRUC_CONSTANT:
-			constant := v.ReadConstant()
-			value.PrintValue(constant)
-			v.stack.Push(constant)
+			constant := vm.ReadConstant()
+			vm.vstack.Push(constant)
 			break
 		case codes.INSTRUC_NIL:
+			vm.vstack.Push(value.New("", value.VT_NIL))
 		case codes.INSTRUC_TRUE:
-			v.stack.Push(value.NewBool(true, value.VT_BOOL))
+			vm.vstack.Push(value.NewBool(true))
 		case codes.INSTRUC_FALSE:
-			v.stack.Push(value.NewBool(false, value.VT_BOOL))
-		case codes.INSTRUC_ADDITION:
-			v.binaryOP("+")
-		case codes.INSTRUC_SUBSTRACT:
-			v.binaryOP("-")
-		case codes.INSTRUC_MULTIPLY:
-			v.binaryOP("*")
-		case codes.INSTRUC_DIVIDE:
-			v.binaryOP("/")
-		case codes.INSTRUC_NEGATE:
-			_v := v.stack.Pop()
-			if !(value.IsNumberType(_v.VT) ||
-				value.IsBooleanType(_v.VT)) {
+			vm.vstack.Push(value.NewBool(false))
+		case codes.INSTRUC_NOT:
+			_v, err := vm.vstack.Peek(0)
+			if !value.IsBooleanType(_v.VT) || err != nil {
 				// error
 				return INTER_RUNTIME_ERROR
 			}
-			v.stack.Push(value.Negate(_v))
+			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
+		case codes.INSTRUC_NEGATE:
+			a, err := vm.vstack.Peek(0)
+			if !value.IsNumberType(a.VT) || err != nil {
+				// error
+				return INTER_RUNTIME_ERROR
+			}
+			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
+		case codes.INSTRUC_EQUAL:
+			b := vm.vstack.Pop()
+			a := vm.vstack.Pop()
+			if !value.IsSameType(a.VT, b.VT) {
+				vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+				a, b = value.ConvertToExpectedType2(a, b, vt)
+			}
+			vm.vstack.Push(value.Equal(&a, &b))
+		case codes.INSTRUC_ADDITION:
+			vm.binaryOP("+")
+		case codes.INSTRUC_SUBSTRACT:
+			vm.binaryOP("-")
+		case codes.INSTRUC_MULTIPLY:
+			vm.binaryOP("*")
+		case codes.INSTRUC_DIVIDE:
+			vm.binaryOP("/")
+		case codes.INSTRUC_GREATER:
+			a, _ := vm.vstack.Peek(0)
+			if !value.IsNumberType(a.VT) {
+				// error
+				return INTER_RUNTIME_ERROR
+			}
+			vm.binaryOP(">")
+		case codes.INSTRUC_LESS:
+			a, _ := vm.vstack.Peek(0)
+			if !value.IsNumberType(a.VT) {
+				// error
+				return INTER_RUNTIME_ERROR
+			}
+			vm.binaryOP("<")
 		case codes.INSTRUC_RETURN:
-			fmt.Println("RETURN")
-			fmt.Printf("STACK POP:, %#v", v.stack.Pop())
+			fmt.Printf("RETURN; STACK POP:, %#v", vm.vstack.Pop())
 			return INTER_OK
 		}
+		vm.StackTrace()
 	}
 }
 
@@ -181,14 +240,14 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 		token.SEMICOLON:     {nil, nil, PREC_NONE},
 		token.SLASH:         {nil, p.Binary, PREC_FACTOR},
 		token.STAR:          {nil, p.Binary, PREC_FACTOR},
-		token.EXCL:          {nil, nil, PREC_NONE},
-		token.EXCL_EQUAL:    {nil, nil, PREC_NONE},
+		token.EXCL:          {p.Unary, nil, PREC_TERM},
+		token.EXCL_EQUAL:    {nil, p.Binary, PREC_EQUALLITY},
 		token.EQUAL:         {nil, nil, PREC_NONE},
-		token.EQUAL_EQUAL:   {nil, nil, PREC_NONE},
-		token.GREATER:       {nil, nil, PREC_NONE},
-		token.GREATER_EQUAL: {nil, nil, PREC_NONE},
-		token.LESS:          {nil, nil, PREC_NONE},
-		token.LESS_EQUAL:    {nil, nil, PREC_NONE},
+		token.EQUAL_EQUAL:   {nil, p.Binary, PREC_COMPARE},
+		token.GREATER:       {nil, p.Binary, PREC_COMPARE},
+		token.GREATER_EQUAL: {nil, p.Binary, PREC_COMPARE},
+		token.LESS:          {nil, p.Binary, PREC_COMPARE},
+		token.LESS_EQUAL:    {nil, p.Binary, PREC_COMPARE},
 		token.IDENTIFIER:    {nil, nil, PREC_NONE},
 		token.STRING:        {nil, nil, PREC_NONE},
 		token.NUMBER:        {p.Number, nil, PREC_NONE},
@@ -264,7 +323,8 @@ func (p *Parser) Unary() {
 	switch tknType {
 	case token.MINUS:
 		p.emit(codes.INSTRUC_NEGATE)
-		break
+	case token.EXCL:
+		p.emit(codes.INSTRUC_NOT)
 	default:
 		return
 	}
@@ -278,16 +338,24 @@ func (p *Parser) Binary() {
 	switch tknType {
 	case token.PLUS:
 		p.emit(codes.INSTRUC_ADDITION)
-		break
 	case token.MINUS:
 		p.emit(codes.INSTRUC_SUBSTRACT)
-		break
 	case token.STAR:
 		p.emit(codes.INSTRUC_MULTIPLY)
-		break
 	case token.SLASH:
 		p.emit(codes.INSTRUC_DIVIDE)
-		break
+	case token.EQUAL_EQUAL:
+		p.emit(codes.INSTRUC_EQUAL)
+	case token.EXCL_EQUAL:
+		p.emit2(codes.INSTRUC_EQUAL, codes.INSTRUC_NOT)
+	case token.GREATER:
+		p.emit(codes.INSTRUC_GREATER)
+	case token.GREATER_EQUAL:
+		p.emit2(codes.INSTRUC_LESS, codes.INSTRUC_NOT)
+	case token.LESS:
+		p.emit(codes.INSTRUC_LESS)
+	case token.LESS_EQUAL:
+		p.emit2(codes.INSTRUC_GREATER, codes.INSTRUC_NOT)
 	default:
 		return
 	}
@@ -363,7 +431,7 @@ func (p *Parser) reportError(tkn *token.Token, what string) {
 	p.perror = true
 }
 
-func (v *VM) Interpret(source string) INTER_RESULT {
+func (vm *VM) Interpret(source string) INTER_RESULT {
 	chk := chunk.Chunk{}
 
 	if Compile(source, &chk) == INTER_COMPILE_ERROR {
@@ -377,18 +445,11 @@ func (v *VM) Interpret(source string) INTER_RESULT {
 
 	if len(chk.Code) != 0 {
 		/* INIT START */
-		v.chunk = &chk
-		v.counter = 0
-		v.ip = &v.chunk.Code[v.counter]
-		valueTypeMap := map[OpKey]value.VALUE_TYPE{
-			OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
-			OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
-			OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
-			OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
-		}
-		v.valueTypeMap = valueTypeMap
+		vm.chunk = &chk
+		vm.counter = 0
+		vm.ip = &vm.chunk.Code[vm.counter]
 		/* INIT END */
-		return v.run()
+		return vm.run()
 	}
 	return INTER_OK
 }

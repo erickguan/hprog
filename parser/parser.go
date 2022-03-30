@@ -1,12 +1,15 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/badc0re/hprog/vm"
 )
 
 func TestParser(expression string) {
 
 	v := vm.VM{}
+	v.InitVM()
 	/*
 		v.InitVM()
 		chk := chunk.Chunk{}
@@ -34,7 +37,10 @@ func TestParser(expression string) {
 		chunk.DissasChunk(&chk, "simple instruction")
 	*/
 
-	v.Interpret(expression)
+	status := v.Interpret(expression)
+	if status == vm.INTER_RUNTIME_ERROR {
+		fmt.Println("Runtime error.")
+	}
 	v.FreeVM()
 	// freeChunk(&chk)
 	// freeChunk(&chk)
