@@ -4,8 +4,6 @@ import "fmt"
 
 type TokenType int
 
-var EoF = rune(0)
-
 const (
 	ILLEGAL TokenType = iota
 

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/badc0re/hprog/parser"
+	"github.com/badc0re/hprog/vm"
 )
 
 func readline(idet string, scanner *bufio.Scanner) bool {
@@ -75,5 +75,50 @@ func main() {
 			}
 		}
 	*/
-	parser.TestParser("1 >= 10")
+	/*
+		v.InitVM()
+		chk := chunk.Chunk{}
+
+		id := chk.AddVariable(123)
+		chk.WriteChunk(codes.INSTRUC_CONSTANT, 1)
+		chk.WriteChunk(id, 1)
+
+		id2 := chk.AddVariable(456)
+		chk.WriteChunk(codes.INSTRUC_CONSTANT, 1)
+		chk.WriteChunk(id2, 1)
+
+		chk.WriteChunk(codes.INSTRUC_ADDITION, 1)
+
+		//chk.WriteChunk(codes.OP_NEGATE, 1)
+
+		id3 := chk.AddVariable(1000)
+		chk.WriteChunk(codes.INSTRUC_CONSTANT, 1)
+		chk.WriteChunk(id3, 1)
+
+		chk.WriteChunk(codes.INSTRUC_ADDITION, 1)
+
+		chk.WriteChunk(codes.INSTRUC_RETURN, 1)
+
+		chunk.DissasChunk(&chk, "simple instruction")
+	*/
+	// freeChunk(&chk)
+	// freeChunk(&chk)
+
+	v := vm.VM{}
+	v.InitVM()
+	status := v.Interpret("(13.1 * 100) + 10")
+	if status == vm.INTER_RUNTIME_ERROR {
+		fmt.Println("Runtime error.")
+	}
+	v.FreeVM()
+	/*
+		lex := lexer.Init("1")
+		for {
+			tkn := lex.Consume()
+			if tkn.Type == token.ILLEGAL {
+				break
+			}
+			fmt.Println(tkn)
+		}
+	*/
 }

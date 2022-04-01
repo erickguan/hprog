@@ -50,7 +50,6 @@ func (ts *TokenScanner) peek() (rune, error) {
 type Lexer struct {
 	Scanner *TokenScanner
 	tokens  chan token.Token
-	STOP    bool
 }
 
 type stateFunc func(*Lexer) stateFunc
@@ -66,8 +65,13 @@ func (lex *Lexer) trimWhitespace() {
 	}
 }
 
-func (lex *Lexer) Consume() chan token.Token {
-	return lex.tokens
+func (lex *Lexer) Consume() (*token.Token, bool) {
+	if tkn, ok := <-lex.tokens; ok {
+		fmt.Println("Token lex.Consume():", tkn)
+		return &tkn, false
+	} else {
+		return nil, true
+	}
 }
 
 func (lex *Lexer) skipComment() {
@@ -173,7 +177,7 @@ loop:
 			err := lex.scanDigit()
 			if err != nil {
 				lex.emit(token.ERR)
-				reportError(lex.Scanner, err.Error())
+				reportError(lex.Scanner, "Digit definition error.")
 				return nil
 			}
 			lex.emit(token.NUMBER)
@@ -182,7 +186,7 @@ loop:
 			// if is reseved (error on assign)
 			if err != nil {
 				lex.emit(token.ERR)
-				reportError(lex.Scanner, err.Error())
+				reportError(lex.Scanner, "Identifier definition error.")
 				return nil
 			}
 			ttype = lex.identifierToReseved(ttype)
@@ -259,7 +263,7 @@ func (lex *Lexer) run() {
 	close(lex.tokens)
 }
 
-func Init(expression string) Lexer {
+func Init(expression string) *Lexer {
 	lex := Lexer{
 		Scanner: &TokenScanner{
 			Reader:   strings.NewReader(expression),
@@ -270,5 +274,5 @@ func Init(expression string) Lexer {
 	}
 
 	go lex.run()
-	return lex
+	return &lex
 }
