@@ -4,6 +4,7 @@ import "fmt"
 
 type TokenType int
 
+const EoF = -1
 const (
 	ILLEGAL TokenType = iota
 
@@ -145,12 +146,12 @@ func reverseMap(m map[string]TokenType) map[TokenType]string {
 
 type Token struct {
 	Type     TokenType
-	Position uint
-	Line     uint
+	Position int
+	Line     int
 	Value    string
 }
 
-func Print(token Token) {
+func Print(token *Token) {
 	tokenTypeReadable, _ := ReversedTokenMap[token.Type]
 	printFormat := "type: %s, position: %d, line:%d, value: %s\n"
 

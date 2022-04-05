@@ -14,12 +14,12 @@ type VarArray struct {
 
 type Chunk struct {
 	Count     uint
-	Lines     []uint
+	Lines     []int
 	Code      []interface{}
 	Constants VarArray
 }
 
-func (c *Chunk) WriteChunk(code interface{}, line uint) {
+func (c *Chunk) WriteChunk(code interface{}, line int) {
 	c.Code = append(c.Code, code)
 	c.Lines = append(c.Lines, line)
 	c.Count++

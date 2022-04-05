@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/badc0re/hprog/vm"
+	"github.com/badc0re/hprog/lexer"
+	"github.com/badc0re/hprog/token"
 )
 
 func readline(idet string, scanner *bufio.Scanner) bool {
@@ -104,21 +105,26 @@ func main() {
 	// freeChunk(&chk)
 	// freeChunk(&chk)
 
-	v := vm.VM{}
-	v.InitVM()
-	status := v.Interpret("(13.1 * 100) + 10")
-	if status == vm.INTER_RUNTIME_ERROR {
-		fmt.Println("Runtime error.")
-	}
-	v.FreeVM()
 	/*
-		lex := lexer.Init("1")
-		for {
-			tkn := lex.Consume()
-			if tkn.Type == token.ILLEGAL {
-				break
+			v := vm.VM{}
+			v.InitVM()
+			status := v.Interpret(".11")
+			if status == vm.INTER_RUNTIME_ERROR {
+				fmt.Println("Runtime error.")
 			}
-			fmt.Println(tkn)
-		}
+		v.FreeVM()
 	*/
+	lex := lexer.Init("a11")
+	for {
+		tkn, _ := lex.Consume()
+		a := *tkn
+		if a.Type == token.EOF {
+			fmt.Println("DONE scan")
+			break
+		} else if a.Type == token.ERR {
+			fmt.Println("ERROR scan")
+			break
+		}
+		fmt.Println("Token:", token.ReversedTokenMap[tkn.Type], "value:", a.Value)
+	}
 }
