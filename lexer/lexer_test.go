@@ -1,13 +1,14 @@
 package lexer
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/badc0re/hprog/token"
 )
 
-func TestParsingNumbers(t *testing.T) {
+func TestLexerNumbers(t *testing.T) {
 	var testCases = map[string]token.TokenType{
 		"11a":   token.ERR,
 		"11.a0": token.ERR,
@@ -18,20 +19,24 @@ func TestParsingNumbers(t *testing.T) {
 		"1.0":   token.NUMBER,
 		"a11":   token.IDENTIFIER,
 	}
-	evluateTestCases(t, testCases)
+	evaluateExpression1(t, testCases)
 }
 
-func TestParsingIdentifiers(t *testing.T) {
+func TestLexerIdentifiers(t *testing.T) {
 	var testCases = map[string]token.TokenType{
 		"a11":   token.IDENTIFIER,
+		"a11a":  token.IDENTIFIER,
 		"AAA":   token.IDENTIFIER,
+		"a11 ":  token.IDENTIFIER,
+		"a11a ": token.IDENTIFIER,
+		"AAA ":  token.IDENTIFIER,
 		"AA!":   token.ERR,
 		"AA1.2": token.ERR,
 	}
-	evluateTestCases(t, testCases)
+	evaluateExpression1(t, testCases)
 }
 
-func TestParsingString(t *testing.T) {
+func _TestLexerString(t *testing.T) {
 	/*
 		var caseMap = map[string]token.TokenType{
 			"\"dame\"": token.STRING,
@@ -42,56 +47,57 @@ func TestParsingString(t *testing.T) {
 	*/
 }
 
-func TestParsingExpression(t *testing.T) {
-	/*
-			caseMap := map[string][]token.TokenType{
-				"1 + 2":   []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
-				"1.2 + 3": []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
-					"((1 + 2) - 3)": []token.TokenType{token.OP, token.OP, token.NUMBER, token.PLUS, token.NUMBER, token.CP, token.MINUS, token.NUMBER, token.CP},
-						"a = 4":                          []token.TokenType{token.IDENTIFIER, token.EQUAL, token.NUMBER},
-						"a = b + c":                      []token.TokenType{token.IDENTIFIER, token.EQUAL, token.IDENTIFIER, token.PLUS, token.IDENTIFIER},
-						"decl a = 10":                    []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER},
-						"(a == 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.EQUAL_EQUAL, token.NUMBER, token.CP},
-						"(a >= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.GREATER_EQUAL, token.NUMBER, token.CP},
-						"(a <= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.LESS_EQUAL, token.NUMBER, token.CP},
-						"if":                             []token.TokenType{token.IF},
-						"(false == true)":                []token.TokenType{token.OP, token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE, token.CP},
-						"decl b = 10; # (if equal true)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER, token.SEMICOLON, token.COMMENT},
-			}
-		evaluateExpression(t, caseMap)
-	*/
+func TestLexerExpression(t *testing.T) {
+	caseMap := map[string][]token.TokenType{
+		"1 + 2":                          []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
+		"1.2 + 3":                        []token.TokenType{token.NUMBER, token.PLUS, token.NUMBER},
+		"((1 + 2) - 3)":                  []token.TokenType{token.OP, token.OP, token.NUMBER, token.PLUS, token.NUMBER, token.CP, token.MINUS, token.NUMBER, token.CP},
+		"a = 4":                          []token.TokenType{token.IDENTIFIER, token.EQUAL, token.NUMBER},
+		"a = b + c":                      []token.TokenType{token.IDENTIFIER, token.EQUAL, token.IDENTIFIER, token.PLUS, token.IDENTIFIER},
+		"decl a = 10":                    []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER},
+		"(a == 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.EQUAL_EQUAL, token.NUMBER, token.CP},
+		"(a >= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.GREATER_EQUAL, token.NUMBER, token.CP},
+		"(a <= 10)":                      []token.TokenType{token.OP, token.IDENTIFIER, token.LESS_EQUAL, token.NUMBER, token.CP},
+		"if":                             []token.TokenType{token.IF},
+		"False == True":                  []token.TokenType{token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE},
+		"(False == True)":                []token.TokenType{token.OP, token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE, token.CP},
+		"decl b = 10; # (if equal True)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER, token.SEMICOLON, token.COMMENT},
+	}
+	evaluateExpression(t, caseMap)
 }
 
 func evaluateExpression(t *testing.T, caseMap map[string][]token.TokenType) {
 	for inputExp, expectExp := range caseMap {
-		// fmt.Println(inputExp)
 		lex := Init(inputExp)
 		var ttArray []token.TokenType
-		for tkn, done := lex.Consume(); done != false; {
+
+		for {
+			tkn, done := lex.Consume()
+			if done == true || tkn.Type == token.EOF {
+				break
+			}
 			ttArray = append(ttArray, tkn.Type)
-			// token.Print(tkn)
 		}
+
+		fmt.Println(ttArray)
+
 		if !reflect.DeepEqual(ttArray, expectExp) {
 			t.Errorf("input: %s, ouput: %+v, expected: %+v", inputExp, ttArray, expectExp)
 		}
 	}
 }
 
-func evluateTestCases(t *testing.T, caseMap map[string]token.TokenType) {
+func evaluateExpression1(t *testing.T, caseMap map[string]token.TokenType) {
 	for input, expected := range caseMap {
-
 		lex := Init(input)
 		for {
-			// TODO: this should be an array...
 			tkn, done := lex.Consume()
+			//  Skip these tokens.
 			if done == true || tkn.Type == token.EOF {
 				break
 			}
-			if tkn.Value != input {
-				t.Errorf("input: %s, output: %s", input, tkn.Value)
-			}
 			if tkn.Type != expected {
-				t.Errorf("input type: %s, output type: %s", token.ReversedTokenMap[expected], token.ReversedTokenMap[tkn.Type])
+				t.Errorf("input %s, input type: %s, output type: %s", input, token.ReversedTokenMap[expected], token.ReversedTokenMap[tkn.Type])
 			}
 		}
 	}

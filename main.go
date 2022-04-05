@@ -114,7 +114,9 @@ func main() {
 			}
 		v.FreeVM()
 	*/
-	lex := lexer.Init("a11")
+	lex := lexer.Init("(a)")
+
+	var result []token.Token
 	for {
 		tkn, _ := lex.Consume()
 		a := *tkn
@@ -125,6 +127,9 @@ func main() {
 			fmt.Println("ERROR scan")
 			break
 		}
-		fmt.Println("Token:", token.ReversedTokenMap[tkn.Type], "value:", a.Value)
+		result = append(result, a)
+	}
+	for _, i := range result {
+		fmt.Println("END RESULT:", token.ReversedTokenMap[i.Type], "value:", i.Value)
 	}
 }

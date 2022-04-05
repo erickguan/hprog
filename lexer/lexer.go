@@ -15,6 +15,7 @@ func IsDigit(ch rune) bool { return unicode.IsDigit(ch) }
 func IsLetter(ch rune) bool { return unicode.IsLetter(ch) }
 
 func IsAlphaNumeric(ch rune) bool { return (IsLetter(ch) || IsDigit(ch)) }
+func isTheEnd(ch rune) bool       { return (ch == token.EoF || ch == ' ') }
 
 func (lex *Lexer) reportError(reason string) {
 	fmt.Fprintf(os.Stderr, "[line:%d, pos:%d], %s\n",
@@ -26,19 +27,19 @@ func (lex *Lexer) unread() {
 }
 
 func (lex *Lexer) read() rune {
-	// ERROR?
-	if lex.position == len(lex.input) {
+	if lex.position >= len(lex.input) {
 		return token.EoF
 	}
 	ch, _ := utf8.DecodeRuneInString(lex.input[lex.position:])
 	lex.position++
-	fmt.Println("read():", string(ch))
 	return ch
 }
 
 func (lex *Lexer) peek() rune {
+	if lex.position >= len(lex.input) {
+		return token.EoF
+	}
 	ch, _ := utf8.DecodeRuneInString(lex.input[lex.position:])
-	fmt.Println("peek():", string(ch))
 	return ch
 }
 
@@ -47,7 +48,6 @@ type Lexer struct {
 	position int
 	line     int
 	start    int
-	end      int
 	tokens   chan token.Token
 }
 
@@ -62,6 +62,7 @@ func (lex *Lexer) trimWhitespace() {
 			break
 		}
 	}
+	// lex.start = lex.position
 }
 
 func (lex *Lexer) Consume() (*token.Token, bool) {
@@ -84,14 +85,15 @@ func (lex *Lexer) skipComment() {
 }
 
 func (lex *Lexer) emit(tokenType token.TokenType) {
+	fmt.Println("start:", lex.start, "end:", lex.position, "len:", len(lex.input))
+	fmt.Println("Value:", lex.input[lex.start:lex.position])
 	lex.tokens <- token.Token{
 		Type:     tokenType,
 		Position: lex.position,
 		Line:     lex.line,
-		Value:    lex.input[lex.start:lex.end],
+		Value:    lex.input[lex.start:lex.position],
 	}
 	lex.start = lex.position
-	lex.end = lex.position
 }
 
 func (lex *Lexer) accept(v string) bool {
@@ -112,48 +114,48 @@ func (lex *Lexer) scanDigit() bool {
 	lex.unread()
 	lex.start = lex.position
 
+	/* ACCEPT DIGITS */
 	digits := "0123456789"
 	lex.acceptRun(digits)
 
 	dot := "."
+	/* ACCEPT DIGITS.DIGITS */
 	if lex.accept(dot) {
 		lex.acceptRun(digits)
 	}
 
-	/*
-		if IsAlphaNumeric(lex.read()) {
-			return false
-		}
-	*/
-
-	lex.end = lex.position
+	if isTheEnd(lex.peek()) {
+	} else if IsAlphaNumeric(lex.peek()) {
+		/* ERROR DIGITS.DIGITS|ALPHA */
+		return false
+	}
 	return true
 }
 
 func (lex *Lexer) scanIdentifier() bool {
+	lex.start = lex.position
+	/* ACCEPT ^ALPHA */
 	if !IsLetter(lex.peek()) {
 		return false
 	}
+	/* ACCEPT ALPHA | DIGIT */
 	for IsLetter(lex.peek()) || IsDigit(lex.peek()) {
 		lex.read()
 	}
-	/*
-		if !IsAlphaNumeric(lex.read()) {
-			return false
-		}
-	*/
+	if IsAlphaNumeric(lex.peek()) {
+		/* ERROR ALPHA | DIGIT | NON-ALPHA*/
+		return false
+	}
 	return true
 }
 
-/*
-func (lex *Lexer) identifierToReseved(ttype token.TokenType) token.TokenType {
-	resevedToken := token.TokenMap[lex.Scanner.buf.String()]
-	if resevedToken != 0 {
-		return resevedToken
+func (lex *Lexer) identifierToReseved(defaultType token.TokenType) token.TokenType {
+	reservedToken := token.TokenMap[lex.input[lex.start:lex.position]]
+	if reservedToken != 0 {
+		return reservedToken
 	}
-	return ttype
+	return defaultType
 }
-*/
 
 func (lex *Lexer) scanConditions(rcurrent token.TokenType, rfuture token.TokenType) token.TokenType {
 	ch := lex.peek()
@@ -170,13 +172,8 @@ func (lex *Lexer) extractString() bool {
 }
 
 func fullScan(lex *Lexer) stateFunc {
-loop:
 	for {
 		ch := lex.read()
-		if ch == token.EoF {
-			lex.emit(token.EOF)
-			break loop
-		}
 
 		switch ch1 := ch; {
 		case IsDigit(ch1):
@@ -184,25 +181,23 @@ loop:
 			// probably a dynamic value creation based
 			// on what type it is.
 			done := lex.scanDigit()
-			fmt.Println(done)
 			if !done {
 				lex.emit(token.ERR)
-				lex.reportError("SyntaxError")
+				lex.reportError("SyntaxError, number malformed.")
 				return nil
 			}
 			lex.emit(token.NUMBER)
 		case IsLetter(ch):
 			lex.unread()
-			fmt.Println("Ident")
 			done := lex.scanIdentifier()
 			// if is reseved (error on assign)
 			if !done {
-				fmt.Println("ERR")
+				lex.reportError("SyntaxError, indentifier malformed.")
 				lex.emit(token.ERR)
 				return nil
 			}
-			//ttype = lex.identifierToReseved(ttype)
-			lex.emit(token.IDENTIFIER)
+			detectedType := lex.identifierToReseved(token.IDENTIFIER)
+			lex.emit(detectedType)
 		default:
 			switch ch {
 			case ' ':
@@ -211,8 +206,8 @@ loop:
 				// TODO: only temporary
 				lex.line += 1
 			case '#':
-				lex.emit(token.COMMENT)
 				lex.skipComment()
+				lex.emit(token.COMMENT)
 			case '+':
 				lex.emit(token.PLUS)
 			case '-':
@@ -234,7 +229,7 @@ loop:
 			case '.':
 				done := lex.scanDigit()
 				if !done {
-					lex.reportError("SyntaxError")
+					lex.reportError("SyntaxError, number misformed.")
 					lex.emit(token.ERR)
 					return nil
 				}
@@ -250,6 +245,7 @@ loop:
 			case '=':
 				// TODO: is it a condition first
 				rtoken := lex.scanConditions(token.EQUAL, token.EQUAL_EQUAL)
+				fmt.Println("AA", token.ReversedTokenMap[rtoken])
 				lex.emit(rtoken)
 			case '<':
 				// TODO: is it a condition first
@@ -265,10 +261,13 @@ loop:
 				} else {
 					lex.reportError("Wrong string formatting.")
 					lex.emit(token.ERR)
+					return nil
 				}
+			case token.EoF:
+				lex.emit(token.EOF)
 			default:
-				break
 				lex.reportError("Token not recognized!")
+				return nil
 			}
 		}
 	}
