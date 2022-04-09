@@ -30,21 +30,21 @@ func TestLexerIdentifiers(t *testing.T) {
 		"a11 ":  token.IDENTIFIER,
 		"a11a ": token.IDENTIFIER,
 		"AAA ":  token.IDENTIFIER,
-		"AA!":   token.ERR,
-		"AA1.2": token.ERR,
+		"11aa":  token.ERR,
+		//"AA!":     token.ERR,
+		//"AA1.2":   token.ERR,
+		//"(AA1.2)": token.ERR,
+		//"AA!=":    token.ERR,
 	}
 	evaluateExpression1(t, testCases)
 }
 
-func _TestLexerString(t *testing.T) {
-	/*
-		var caseMap = map[string]token.TokenType{
-			"\"dame\"": token.STRING,
-			"\"dame":   token.ERR,
-			"'dame":    token.ERR,
-		}
-		evalCase(t, caseMap)
-	*/
+func TestLexerExpression1(t *testing.T) {
+	caseMap := map[string][]token.TokenType{
+		"(True)": []token.TokenType{token.OP, token.BOOL_TRUE, token.CP},
+		"(a)":    []token.TokenType{token.OP, token.IDENTIFIER, token.CP},
+	}
+	evaluateExpression(t, caseMap)
 }
 
 func TestLexerExpression(t *testing.T) {
@@ -64,6 +64,17 @@ func TestLexerExpression(t *testing.T) {
 		"decl b = 10; # (if equal True)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER, token.SEMICOLON, token.COMMENT},
 	}
 	evaluateExpression(t, caseMap)
+}
+
+func TestLexerString(t *testing.T) {
+	var caseMap = map[string]token.TokenType{
+		/* not supported
+		"\"test\"": token.STRING,
+		// "\"test":   token.ERR,
+		*/
+		"\"test\"": token.STRING,
+	}
+	evaluateExpression1(t, caseMap)
 }
 
 func evaluateExpression(t *testing.T, caseMap map[string][]token.TokenType) {

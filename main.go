@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
+	"os"
+	"strings"
 
-	"github.com/badc0re/hprog/lexer"
-	"github.com/badc0re/hprog/token"
+	"github.com/badc0re/hprog/vm"
 )
 
 func readline(idet string, scanner *bufio.Scanner) bool {
@@ -13,69 +15,71 @@ func readline(idet string, scanner *bufio.Scanner) bool {
 	return scanner.Scan()
 }
 
+func loadFile(inputFile string) {
+	var buffer []string
+
+	hFile, err := os.Open(inputFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fileScanner := bufio.NewScanner(hFile)
+	for fileScanner.Scan() {
+		buffer = append(buffer, fileScanner.Text())
+	}
+
+	v := vm.VM{}
+	v.InitVM()
+	status := v.Interpret(strings.Join(buffer[:], "\n"))
+	if status == vm.INTER_RUNTIME_ERROR {
+		fmt.Println("Runtime error.")
+	}
+}
+
+func OnNewLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	return bufio.ScanLines(data, atEOF)
+}
+
 func main() {
-	/*
-		// direct file parser
-		//test()
-		var buffer []string
-		var inputFile string
-		flag.StringVar(&inputFile, "file", "", "Input hell file.")
-		flag.Parse()
+	var buffer []string
+	var inputFile string
 
-		fmt.Println(inputFile)
-		hFile, err := os.Open(inputFile)
+	flag.StringVar(&inputFile, "file", "", "Input hell file.")
+	flag.Parse()
 
-		if hFile != nil {
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fileScanner := bufio.NewScanner(hFile)
-			for fileScanner.Scan() {
-				buffer = append(buffer, fileScanner.Text())
-			}
+	if len(inputFile) != 0 {
+		loadFile(inputFile)
+	}
 
-			lex := lexer.Init(strings.Join(buffer[:], "\n"))
-			for tkn := range lex.Consume() {
-				token.Print(tkn)
-			}
-		} else {
-			const idet = "hprog> "
+	const idet = "hprog> "
+	fmt.Println("Hprog Version 0.01")
+	fmt.Println("One way to escape, ctr-c to exit.")
 
-			fmt.Println("Hprog Version 0.01")
-			fmt.Println("One way to escape, ctr-c to exit.")
+	/* INPUT SCANNER */
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(OnNewLine)
 
-			scanner := bufio.NewScanner(os.Stdin)
+	/* INIT VM */
+	v := vm.VM{}
+	v.InitVM()
 
-			onNewLine := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-				return bufio.ScanLines(data, atEOF)
-			}
+	// readlines and process
+	for readline(idet, scanner) {
+		var sline = scanner.Text()
 
-			scanner.Split(onNewLine)
-			for {
-				for readline(idet, scanner) {
-					var sline = scanner.Text()
-					if len(sline) > 0 {
-						var tokens []token.Token
-						lex := lexer.Init(sline)
-						for tkn := range lex.Consume() {
-							tokens = append(tokens, tkn)
-							if tkn.Type == token.EOF || tkn.Type == token.ERR {
-								break
-							}
-							token.Print(tkn)
-						}
-
-						buffer = append(buffer, sline)
-					}
-				}
-			}
-
-			if scanner.Err() != nil {
-				fmt.Printf("error: %s\n", scanner.Err())
-			}
+		if scanner.Err() != nil {
+			fmt.Printf("error: %s\n", scanner.Err())
 		}
-	*/
+
+		if len(sline) > 0 {
+			status := v.Interpret(sline)
+			if status == vm.INTER_RUNTIME_ERROR {
+				fmt.Println("Runtime error.")
+			}
+			buffer = append(buffer, sline)
+		}
+	}
+
 	/*
 		v.InitVM()
 		chk := chunk.Chunk{}
@@ -114,22 +118,24 @@ func main() {
 			}
 		v.FreeVM()
 	*/
-	lex := lexer.Init("(a)")
+	/*
+		lex := lexer.Init("\"'dame\"")
 
-	var result []token.Token
-	for {
-		tkn, _ := lex.Consume()
-		a := *tkn
-		if a.Type == token.EOF {
-			fmt.Println("DONE scan")
-			break
-		} else if a.Type == token.ERR {
-			fmt.Println("ERROR scan")
-			break
+		var result []token.Token
+		for {
+			tkn, _ := lex.Consume()
+			a := *tkn
+			if a.Type == token.EOF {
+				fmt.Println("DONE scan")
+				break
+			} else if a.Type == token.ERR {
+				fmt.Println("ERROR scan")
+				break
+			}
+			result = append(result, a)
 		}
-		result = append(result, a)
-	}
-	for _, i := range result {
-		fmt.Println("END RESULT:", token.ReversedTokenMap[i.Type], "value:", i.Value)
-	}
+		for _, i := range result {
+			fmt.Println("END RESULT:", token.ReversedTokenMap[i.Type], "value:", i.Value)
+		}
+	*/
 }

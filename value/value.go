@@ -8,7 +8,7 @@ import (
 type VALUE_TYPE int
 
 const (
-	VT_ILLEGAL = iota
+	VT_ILLEGAL VALUE_TYPE = iota
 
 	VT_BOOL
 	VT_NIL
@@ -17,6 +17,8 @@ const (
 	VT_INT
 	VT_COMPLEX
 	VT_HEX
+
+	VT_OBJ
 
 	VT_NUMBER
 )
@@ -33,11 +35,23 @@ var VTmap = map[VALUE_TYPE]string{
 	VT_NUMBER: "VT_NUMBER",
 }
 
+type OType int
+
+const (
+	O_ILLEGAL OType = iota
+	O_STRING
+)
+
+type Obj struct {
+	otype OType
+}
+
 type V struct {
 	_bool bool
 	_int  int
 	_f64  float64
 	_nil  bool
+	_obj  *Obj
 }
 type Value struct {
 	VT VALUE_TYPE

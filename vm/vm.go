@@ -122,6 +122,7 @@ func (vm *VM) run() INTER_RESULT {
 		case codes.INSTRUC_CONSTANT:
 			constant := vm.ReadConstant()
 			vm.vstack.Push(constant)
+			fmt.Println("ADD CONST")
 			break
 		case codes.INSTRUC_NIL:
 			vm.vstack.Push(value.New("", value.VT_NIL))
@@ -174,10 +175,10 @@ func (vm *VM) run() INTER_RESULT {
 			}
 			vm.binaryOP("<")
 		case codes.INSTRUC_RETURN:
-			fmt.Printf("RETURN; STACK POP:, %#v", vm.vstack.Pop())
+			fmt.Printf("RETURN; STACK POP:, %#v\n", vm.vstack.Pop())
 			return INTER_OK
 		}
-		vm.StackTrace()
+		//vm.StackTrace()
 	}
 }
 
@@ -207,7 +208,7 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	chunk.DissasChunk(&chk, "test")
+	// chunk.DissasChunk(&chk, "test")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

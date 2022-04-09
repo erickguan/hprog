@@ -21,6 +21,7 @@ const (
 	MINUS
 	SEMICOLON
 	QUOTE
+	SINGLE_QUOTE
 
 	COLON
 
@@ -37,6 +38,10 @@ const (
 	// Literals
 	IDENTIFIER
 	NUMBER
+	// FLOAT
+	// INT
+	// COMPLEX
+
 	NIL
 	STRING
 
