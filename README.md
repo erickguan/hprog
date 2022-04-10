@@ -34,21 +34,21 @@ decl c = 10
 ## Functions
 
 ```
-decl fn testVariable() {
+fn testVariable() {
     return a < c ? true : false
 } (bool)
 
-decl fn testVariable() =  {
+fn testVariable() =  {
     a < c ? true : false
 } (bool)
 
-decl cncr fn testVariable() =  {
+fn cncr testVariable() =  {
     a < c ? true : false
 } (bool)
 
 b = testVariable()
 
-decl func populateArray(startRange: int, endRange: int) =  {
+fn populateArray(startRange: int, endRange: int) =  {
     ...
 } (array)
 
