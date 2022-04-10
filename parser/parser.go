@@ -153,7 +153,7 @@ func (p *Parser) emitReturn() {
 	p.emit(codes.INSTRUC_RETURN)
 }
 
-func (p *Parser) emitVariable(v value.Value) {
+func (p *Parser) emitConst(v value.Value) {
 	p.emit2(codes.INSTRUC_CONSTANT, p.makeConstant(v))
 }
 
@@ -163,10 +163,11 @@ func (p *Parser) makeConstant(v value.Value) uint {
 
 func (p *Parser) Number() {
 	dt := value.DetectNumberTypeByConversion(p.previous.Value)
-	p.emitVariable(value.New(p.previous.Value, dt))
+	p.emitConst(value.New(p.previous.Value, dt))
 }
 
 func (p *Parser) String() {
+	//p.emitConst(p.previous)
 }
 
 func (p *Parser) Literal() {
@@ -209,16 +210,16 @@ func (p *Parser) Decl() {
 }
 
 func (p *Parser) varDecl() {
-
+	if p.Match(token.EQUAL) {
+		p.Expression()
+	} else {
+		p.emit(codes.INSTRUC_NIL)
+	}
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError")
 }
 
 func (p *Parser) Variable() {
 
-}
-
-func (p *Parser) namedVariable() {
-
-	// p.emit(codes.INSTRUC)
 }
 
 func (p *Parser) Statement() {

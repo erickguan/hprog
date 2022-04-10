@@ -266,6 +266,7 @@ func fullScan(lex *Lexer) stateFunc {
 			case token.EoF:
 				lex.emit(token.EOF)
 			default:
+				lex.emit(token.ERR)
 				lex.reportError("Token not recognized.")
 				return nil
 			}

@@ -205,10 +205,13 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	p.Advance()
 	for !p.Match(token.EOF) {
 		p.Decl()
+		// temp
+		if p.Perror {
+			break
+		}
 	}
 	p.EndCompile()
 
-	// TODO: to function?
 	if p.Perror {
 		return INTER_COMPILE_ERROR
 	}
@@ -225,7 +228,7 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	chunk.DissasChunk(&chk, "test")
+	chunk.DissasChunk(&chk, "INSTRUCT")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

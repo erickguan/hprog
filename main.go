@@ -74,7 +74,7 @@ func main() {
 
 		if len(sline) > 0 {
 			status := v.Interpret(sline)
-			if status == vm.INTER_RUNTIME_ERROR {
+			if status != vm.INTER_OK {
 				fmt.Println("Runtime error.")
 			}
 			buffer = append(buffer, sline)

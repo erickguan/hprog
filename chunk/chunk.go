@@ -86,6 +86,7 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 }
 
 func DissasChunk(chunk *Chunk, name string) {
+	fmt.Printf("\n")
 	fmt.Printf("== %s == \n", name)
 
 	offset := uint(0)
