@@ -11,7 +11,7 @@ import (
 )
 
 func readline(idet string, scanner *bufio.Scanner) bool {
-	//	fmt.Print(idet)
+	fmt.Print(idet)
 	return scanner.Scan()
 }
 
