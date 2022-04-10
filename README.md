@@ -3,17 +3,7 @@
 Dynamically-typed programming language with the scope of providing functionallity
 of processing data by using the internal goroutines.
 
-## Principles:
-
-- What is written, will be changed
-- “Simple” is a process, not a goal
-- Production ready from the start
-
-## Top goals/questions
-- How to split a structure in batches so it can have operations done concurrently.
-- How do you achieve map-reduce on large datasets with lazy loading using concurrency
-
-### Sample VM Instructions
+## Sample VM Instructions
 
 ```
 hprog> print(1+1)
