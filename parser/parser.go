@@ -58,8 +58,7 @@ func (p *Parser) Consume(tknType token.TokenType, message string) {
 		return
 	}
 
-	//p.reportError(p.current, "Error Consume()")
-	fmt.Println("Error Consume()")
+	p.reportError(p.current, message)
 }
 
 func (p *Parser) ParsePrec(prec PREC) {
@@ -158,6 +157,9 @@ func (p *Parser) Number() {
 	p.emitVariable(value.New(p.previous.Value, dt))
 }
 
+func (p *Parser) String() {
+}
+
 func (p *Parser) Literal() {
 	tokenType := p.previous.Type
 	switch tokenType {
@@ -181,6 +183,34 @@ func (p *Parser) Expression() {
 	p.ParsePrec(PREC_ASSIGN)
 }
 
+func (p *Parser) Match(tokenType token.TokenType) bool {
+	if !p.Check(tokenType) {
+		return false
+	}
+	p.Advance()
+	return true
+}
+
+func (p *Parser) Decl() {
+	p.Statement()
+}
+
+func (p *Parser) Statement() {
+	if p.Match(token.PRINT) {
+		p.PrintStmt()
+	}
+}
+
+func (p *Parser) Check(tokenType token.TokenType) bool {
+	return p.current.Type == tokenType
+}
+
+func (p *Parser) PrintStmt() {
+	p.Consume(token.OP, "Expected '(' after expression.")
+	p.Grouping()
+	p.emit(codes.INSTRUC_PRINT)
+}
+
 func (p *Parser) Advance() {
 	p.previous = p.current
 
@@ -189,7 +219,6 @@ func (p *Parser) Advance() {
 		return
 	}
 	p.current = tkn
-
 }
 
 func (p *Parser) reportError(tkn *token.Token, what string) {
@@ -225,7 +254,7 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		token.LESS:          {nil, p.Binary, PREC_COMPARE},
 		token.LESS_EQUAL:    {nil, p.Binary, PREC_COMPARE},
 		token.IDENTIFIER:    {nil, nil, PREC_NONE},
-		token.STRING:        {nil, nil, PREC_NONE},
+		token.STRING:        {p.String, nil, PREC_NONE},
 		token.NUMBER:        {p.Number, nil, PREC_NONE},
 		token.AND:           {nil, nil, PREC_NONE},
 		token.ELSE:          {nil, nil, PREC_NONE},

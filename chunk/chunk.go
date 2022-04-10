@@ -37,7 +37,7 @@ func OpInstruction(name string, offset uint) uint {
 func PrintConstant(name string, chunk *Chunk, offset uint) uint {
 	constant := chunk.Code[offset+1].(uint)
 	fmt.Printf("%-16s %d '", name, constant)
-	fmt.Printf("%g", chunk.Constants.Values[constant])
+	value.PrintValue(chunk.Constants.Values[constant])
 	fmt.Printf("'\n")
 	return offset + 2
 }
@@ -76,6 +76,8 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 		return OpInstruction("INSTRUC_NIL", offset)
 	case codes.INSTRUC_RETURN:
 		return OpInstruction("INSTRUC_RETURN", offset)
+	case codes.INSTRUC_PRINT:
+		return OpInstruction("INSTRUC_PRINT", offset)
 	}
 	// NOTE: should never reach!
 	return 0

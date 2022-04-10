@@ -30,6 +30,7 @@ type VM struct {
 	counter      int
 	vstack       stack.Stack
 	valueTypeMap map[OpKey]value.VALUE_TYPE
+	objects      *value.Obj
 }
 
 type OpKey struct {
@@ -38,6 +39,7 @@ type OpKey struct {
 }
 
 func (vm *VM) InitVM() {
+	vm.objects = nil
 	vm.vstack = stack.Stack{
 		Sarray: make([]value.Value, MAX_STACK_SIZE),
 		Top:    -1,
@@ -47,6 +49,7 @@ func (vm *VM) InitVM() {
 		OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
 		OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
 		OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
+		// OpKey{a: value.VT_STRING, b: value.VT_STRING}:     value.VT_STRING,
 	}
 	vm.valueTypeMap = valueTypeMap
 }
@@ -59,6 +62,7 @@ func (vm *VM) ResetStack() {
 
 func (vm *VM) FreeVM() {
 	vm.vstack = stack.Stack{}
+	// free objects
 }
 
 func (vm *VM) Move() interface{} {
@@ -109,7 +113,8 @@ func (v *VM) StackTrace() {
 	fmt.Println("== Stack Trace ==")
 	fmt.Println("[")
 	for i := 0; i < v.vstack.Top+1; i++ {
-		value.PrintValue(i, v.vstack.Sarray[i])
+		fmt.Printf("%d ", i)
+		value.PrintValue(v.vstack.Sarray[i])
 	}
 	fmt.Println("]")
 	fmt.Printf("== End Stack Trace ==\n\n")
@@ -118,12 +123,12 @@ func (v *VM) StackTrace() {
 func (vm *VM) run() INTER_RESULT {
 	for {
 		instruct := vm.Move()
+		fmt.Println("AA")
 		switch instruct {
 		case codes.INSTRUC_CONSTANT:
 			constant := vm.ReadConstant()
 			vm.vstack.Push(constant)
-			fmt.Println("ADD CONST")
-			break
+			// fmt.Println("ADD CONST")
 		case codes.INSTRUC_NIL:
 			vm.vstack.Push(value.New("", value.VT_NIL))
 		case codes.INSTRUC_TRUE:
@@ -174,9 +179,15 @@ func (vm *VM) run() INTER_RESULT {
 				return INTER_RUNTIME_ERROR
 			}
 			vm.binaryOP("<")
-		case codes.INSTRUC_RETURN:
-			fmt.Printf("RETURN; STACK POP:, %#v\n", vm.vstack.Pop())
+		case codes.INSTRUC_PRINT:
+			value.PrintValue(vm.vstack.Pop())
+			fmt.Println()
 			return INTER_OK
+			/*
+				case codes.INSTRUC_RETURN:
+					fmt.Printf("RETURN; STACK POP:, %#v\n", vm.vstack.Pop())
+					return INTER_OK
+			*/
 		}
 		//vm.StackTrace()
 	}
@@ -187,8 +198,10 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	p := parser.Init(lex, chk)
 
 	p.Advance()
-	p.Expression()
-	p.Consume(token.EOF, "Expected end.")
+
+	for !p.Match(token.EOF) {
+		p.Decl()
+	}
 	p.EndCompile()
 
 	// TODO: to function?
@@ -208,7 +221,7 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	// chunk.DissasChunk(&chk, "test")
+	chunk.DissasChunk(&chk, "test")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

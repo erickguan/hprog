@@ -46,6 +46,12 @@ type Obj struct {
 	otype OType
 }
 
+type ObjString struct {
+	obj     Obj
+	length  int
+	_string *string
+}
+
 type V struct {
 	_bool bool
 	_int  int
@@ -58,7 +64,7 @@ type Value struct {
 	_V V
 }
 
-func PrintValue(index int, v Value) {
+func PrintValue(v Value) {
 	vts := ""
 	switch v.VT {
 	case VT_INT:
@@ -70,7 +76,7 @@ func PrintValue(index int, v Value) {
 	case VT_NIL:
 		vts = "nil"
 	}
-	fmt.Printf("%d. %s (%s),\n", index, vts, VTmap[v.VT])
+	fmt.Printf("%s (%s)", vts, VTmap[v.VT])
 }
 
 func NewBool(value bool) Value {
@@ -137,6 +143,7 @@ func Add(a *Value, b *Value) Value {
 			_V: V{_int: t},
 			VT: VT_INT,
 		}
+		// case VT_STRING:
 	}
 	// TODO: return error!
 	return Value{}
@@ -241,8 +248,8 @@ func Equal(a *Value, b *Value) Value {
 	switch a.VT {
 	case VT_NIL:
 		return NewBool(true)
-	// case VT_BOOL:
-	// return NewBool(a._V._bool == b._V._bool)
+	case VT_BOOL:
+		return NewBool(a._V._bool == b._V._bool)
 	case VT_INT:
 		return NewBool(a._V._int == b._V._int)
 	case VT_FLOAT:
