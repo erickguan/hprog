@@ -201,6 +201,7 @@ func fullScan(lex *Lexer) stateFunc {
 				lex.trimWhitespace()
 			case '\n':
 				lex.line += 1
+				lex.emit(token.NEW_LINE)
 			case '#':
 				lex.skipComment()
 				lex.emit(token.COMMENT)

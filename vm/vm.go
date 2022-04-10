@@ -66,6 +66,9 @@ func (vm *VM) FreeVM() {
 }
 
 func (vm *VM) Move() interface{} {
+	if vm.counter >= len(vm.chunk.Code) {
+		return nil
+	}
 	vm.ip = &vm.chunk.Code[vm.counter]
 	vm.counter++
 	return *vm.ip
@@ -123,12 +126,10 @@ func (v *VM) StackTrace() {
 func (vm *VM) run() INTER_RESULT {
 	for {
 		instruct := vm.Move()
-		fmt.Println("AA")
 		switch instruct {
 		case codes.INSTRUC_CONSTANT:
 			constant := vm.ReadConstant()
 			vm.vstack.Push(constant)
-			// fmt.Println("ADD CONST")
 		case codes.INSTRUC_NIL:
 			vm.vstack.Push(value.New("", value.VT_NIL))
 		case codes.INSTRUC_TRUE:
@@ -181,13 +182,17 @@ func (vm *VM) run() INTER_RESULT {
 			vm.binaryOP("<")
 		case codes.INSTRUC_PRINT:
 			value.PrintValue(vm.vstack.Pop())
-			fmt.Println()
+			fmt.Printf("\n")
+			// NOT NEEDED!
+			//return INTER_OK
+		/*
+			case codes.INSTRUC_POP:
+				pop := vm.vstack.Pop()
+				value.PrintValue(pop)
+				fmt.Printf("\n")
+		*/
+		case codes.INSTRUC_RETURN:
 			return INTER_OK
-			/*
-				case codes.INSTRUC_RETURN:
-					fmt.Printf("RETURN; STACK POP:, %#v\n", vm.vstack.Pop())
-					return INTER_OK
-			*/
 		}
 		//vm.StackTrace()
 	}
@@ -198,7 +203,6 @@ func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	p := parser.Init(lex, chk)
 
 	p.Advance()
-
 	for !p.Match(token.EOF) {
 		p.Decl()
 	}

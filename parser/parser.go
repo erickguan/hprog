@@ -61,6 +61,15 @@ func (p *Parser) Consume(tknType token.TokenType, message string) {
 	p.reportError(p.current, message)
 }
 
+func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string) {
+	if p.current.Type == t1 || p.current.Type == t2 {
+		p.Advance()
+		return
+	}
+
+	p.reportError(p.current, message)
+}
+
 func (p *Parser) ParsePrec(prec PREC) {
 	p.Advance()
 	prefRule := p.getRule(p.previous.Type).prefix
@@ -192,23 +201,49 @@ func (p *Parser) Match(tokenType token.TokenType) bool {
 }
 
 func (p *Parser) Decl() {
-	p.Statement()
+	if p.Match(token.DECLARE) {
+		p.varDecl()
+	} else {
+		p.Statement()
+	}
+}
+
+func (p *Parser) varDecl() {
+
+}
+
+func (p *Parser) Variable() {
+
+}
+
+func (p *Parser) namedVariable() {
+
+	// p.emit(codes.INSTRUC)
 }
 
 func (p *Parser) Statement() {
 	if p.Match(token.PRINT) {
 		p.PrintStmt()
+	} else {
+		p.ExpressionStmt()
 	}
 }
 
-func (p *Parser) Check(tokenType token.TokenType) bool {
-	return p.current.Type == tokenType
+func (p *Parser) ExpressionStmt() {
+	p.Expression()
+	// EOF | \n
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError")
+	p.emit(codes.INSTRUC_POP)
 }
 
 func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
 	p.Grouping()
 	p.emit(codes.INSTRUC_PRINT)
+}
+
+func (p *Parser) Check(tokenType token.TokenType) bool {
+	return p.current.Type == tokenType
 }
 
 func (p *Parser) Advance() {
@@ -263,11 +298,11 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		token.FOR:           {nil, nil, PREC_NONE},
 		token.FUNCTION:      {nil, nil, PREC_NONE},
 		token.IF:            {nil, nil, PREC_NONE},
-		token.NIL:           {p.Literal, nil, PREC_NONE},
 		token.OR:            {nil, nil, PREC_NONE},
+		token.NIL:           {p.Literal, nil, PREC_NONE},
 		token.PRINT:         {nil, nil, PREC_NONE},
 		token.RETURN:        {nil, nil, PREC_NONE},
-		token.VAR:           {nil, nil, PREC_NONE},
+		token.DECLARE:       {p.Variable, nil, PREC_NONE},
 		token.WHILE:         {nil, nil, PREC_NONE},
 		token.ERR:           {nil, nil, PREC_NONE},
 		token.EOF:           {nil, nil, PREC_NONE},

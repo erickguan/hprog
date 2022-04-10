@@ -22,6 +22,7 @@ const (
 	SEMICOLON
 	QUOTE
 	SINGLE_QUOTE
+	NEW_LINE
 
 	COLON
 
@@ -124,7 +125,7 @@ var TokenMap = map[string]TokenType{
 	"True":  BOOL_TRUE,
 
 	"#":      COMMENT,
-	"func":   FUNCTION,
+	"fn":     FUNCTION,
 	"print":  PRINT,
 	"return": RETURN,
 	"var":    VAR,
