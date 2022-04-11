@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -41,46 +40,55 @@ func OnNewLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
 }
 
 func main() {
-	var buffer []string
-	var inputFile string
+	/*
+		var buffer []string
+		var inputFile string
 
-	flag.StringVar(&inputFile, "file", "", "Input hprog file.")
-	flag.Parse()
+		flag.StringVar(&inputFile, "file", "", "Input hprog file.")
+		flag.Parse()
 
-	if len(inputFile) != 0 {
-		loadFile(inputFile)
-		os.Exit(1)
-	}
+		if len(inputFile) != 0 {
+			loadFile(inputFile)
+			os.Exit(1)
+		}
 
-	const idet = "hprog> "
-	fmt.Println("Hprog Version 0.01")
-	fmt.Println("One way to escape, ctr-c to exit.")
+		const idet = "hprog> "
+		fmt.Println("Hprog Version 0.01")
+		fmt.Println("One way to escape, ctr-c to exit.")
 
-	// INPUT SCANNER
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(OnNewLine)
+		// INPUT SCANNER
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Split(OnNewLine)
 
-	// INIT VM
+		// INIT VM
+		v := vm.VM{}
+		v.InitVM()
+
+		// readlines and process
+		for readline(idet, scanner) {
+			var sline = scanner.Text()
+
+			if scanner.Err() != nil {
+				fmt.Printf("error: %s\n", scanner.Err())
+			}
+
+			if len(sline) > 0 {
+				status := v.Interpret(sline)
+				if status != vm.INTER_OK {
+					fmt.Println("Runtime error.")
+				}
+				buffer = append(buffer, sline)
+			}
+		}
+	*/
+
 	v := vm.VM{}
 	v.InitVM()
-
-	// readlines and process
-	for readline(idet, scanner) {
-		var sline = scanner.Text()
-
-		if scanner.Err() != nil {
-			fmt.Printf("error: %s\n", scanner.Err())
-		}
-
-		if len(sline) > 0 {
-			status := v.Interpret(sline)
-			if status != vm.INTER_OK {
-				fmt.Println("Runtime error.")
-			}
-			buffer = append(buffer, sline)
-		}
+	status := v.Interpret("print(\"a\" + \"B\")")
+	if status == vm.INTER_RUNTIME_ERROR {
+		fmt.Println("Runtime error.")
 	}
-
+	v.FreeVM()
 	/*
 		v.InitVM()
 		chk := chunk.Chunk{}

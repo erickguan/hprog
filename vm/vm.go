@@ -88,12 +88,14 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
 		a, b = value.ConvertToExpectedType2(a, b, vt)
 	}
-	// allow "+" for strings
-	if !(value.IsNumberType(a.VT) &&
-		value.IsNumberType(b.VT)) {
-		// works!
-		return INTER_RUNTIME_ERROR
-	}
+	/*
+		// allow "+" for strings
+		if !(value.IsNumberType(a.VT) &&
+			value.IsNumberType(b.VT)) {
+			// works!
+			return INTER_RUNTIME_ERROR
+		}
+	*/
 
 	switch op {
 	case "+":
@@ -194,7 +196,7 @@ func (vm *VM) run() INTER_RESULT {
 		case codes.INSTRUC_RETURN:
 			return INTER_OK
 		}
-		//vm.StackTrace()
+		vm.StackTrace()
 	}
 }
 
@@ -228,7 +230,7 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	//chunk.DissasChunk(&chk, "INSTRUCT")
+	chunk.DissasChunk(&chk, "INSTRUCT")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

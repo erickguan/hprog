@@ -1,5 +1,7 @@
 package value
 
+// move to generics soon...
+
 import (
 	"fmt"
 	"strconv"
@@ -31,6 +33,7 @@ var VTmap = map[VALUE_TYPE]string{
 	VT_INT:     "VT_INT",
 	VT_COMPLEX: "VT_COMPLEX",
 	VT_HEX:     "VT_HEX",
+	VT_OBJ:     "VT_OBJ",
 
 	VT_NUMBER: "VT_NUMBER",
 }
@@ -147,7 +150,9 @@ func Add(a *Value, b *Value) Value {
 			_V: V{_int: t},
 			VT: VT_INT,
 		}
-		//case VT_STRING:
+	case VT_OBJ:
+		t := ConvertToString(a) + ConvertToString(b)
+		return NewString(t)
 	}
 	// TODO: return error!
 	return Value{}
@@ -291,7 +296,6 @@ func Greater(a *Value, b *Value) Value {
 	case VT_FLOAT:
 		return NewBool(a._V._f64 > b._V._f64)
 	default:
-		fmt.Println("AAA")
 		return NewBool(false)
 	}
 }
@@ -342,7 +346,14 @@ func ObjAsValue(o *Obj) Value {
 }
 */
 
-// #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
+func ConvertToString(v *Value) string {
+	if !IsString(v) {
+		return "" //, false
+	}
+	return AsString(v) //, true
+}
+
+func FreeObj(v *Value)                           { v._V._objCtr = nil }
 func AsString(v *Value) string                   { return v._V._objCtr._obj.(*ObjString)._string }
 func IsString(v *Value) bool                     { return ObjType(v) == O_STRING }
 func ObjType(v *Value) OType                     { return AsObj(v).otype }
