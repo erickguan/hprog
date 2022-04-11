@@ -86,6 +86,10 @@ func (p *Parser) ParsePrec(prec PREC) {
 		}
 		p.Advance()
 		infix := p.getRule(p.previous.Type).infix
+		if infix == nil {
+			p.reportError(p.current, "Syntax Error, expression not allowed.")
+			return
+		}
 		infix()
 	}
 }
@@ -167,7 +171,7 @@ func (p *Parser) Number() {
 }
 
 func (p *Parser) String() {
-	//p.emitConst(p.previous)
+	//p.emitConst(p.previous.value)
 }
 
 func (p *Parser) Literal() {
