@@ -30,7 +30,7 @@ type VM struct {
 	counter      int
 	vstack       stack.Stack
 	valueTypeMap map[OpKey]value.VALUE_TYPE
-	objects      *value.Obj
+	objects      *value.ObjCtr
 }
 
 type OpKey struct {
@@ -228,7 +228,7 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	chunk.DissasChunk(&chk, "INSTRUCT")
+	//chunk.DissasChunk(&chk, "INSTRUCT")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

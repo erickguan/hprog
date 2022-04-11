@@ -171,7 +171,7 @@ func (p *Parser) Number() {
 }
 
 func (p *Parser) String() {
-	//p.emitConst(p.previous.value)
+	p.emitConst(value.NewString(p.previous.Value))
 }
 
 func (p *Parser) Literal() {
