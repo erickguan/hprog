@@ -211,6 +211,9 @@ func (p *Parser) Decl() {
 	} else {
 		p.Statement()
 	}
+	if p.ppanic {
+
+	}
 }
 
 func (p *Parser) declVar() {
@@ -263,7 +266,12 @@ func (p *Parser) ExpressionStmt() {
 
 func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
-	p.Grouping()
+	// CP if only "print()"
+	if !p.Match(token.CP) {
+		p.Grouping()
+	} else {
+		p.emit(codes.INSTRUC_NIL)
+	}
 	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError Expression")
 	p.emit(codes.INSTRUC_PRINT)
 }

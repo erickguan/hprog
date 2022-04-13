@@ -151,8 +151,6 @@ func Add(a *Value, b *Value) Value {
 		}
 	case VT_OBJ:
 		t := ConvertToString(a) + ConvertToString(b)
-		FreeObj(a)
-		FreeObj(b)
 		return NewString(t)
 	}
 	// TODO: return error!
@@ -264,6 +262,8 @@ func Equal(a *Value, b *Value) Value {
 		return NewBool(a._V._int == b._V._int)
 	case VT_FLOAT:
 		return NewBool(a._V._f64 == b._V._f64)
+	case VT_OBJ:
+		return NewBool(ConvertToString(a) == ConvertToString(b))
 	default:
 		return NewBool(false)
 	}
@@ -344,9 +344,6 @@ func ObjAsValue(o *Obj) Value {
 */
 
 func ConvertToString(v *Value) string {
-	if !IsString(v) {
-		return "" //, false
-	}
 	return *AsString(v) //, true
 }
 
@@ -355,7 +352,7 @@ func AsString(v *Value) *string { return v._V._objCtr._obj.(*string) }
 func IsString(v *Value) bool    { return ObjType(v) == O_STRING }
 func ObjType(v *Value) OType    { return AsObj(v).otype }
 func AsObj(v *Value) *ObjCtr    { return v._V._objCtr }
-func IsObj(v VALUE_TYPE) bool   { return v == VT_OBJ }
+func IsObj(v *Value) bool       { return v.VT == VT_OBJ }
 
 func IsNumberType(v VALUE_TYPE) bool             { return v == VT_FLOAT || v == VT_INT }
 func IsSameType(a VALUE_TYPE, b VALUE_TYPE) bool { return a == b }

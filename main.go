@@ -23,7 +23,6 @@ func loadFile(inputFile string) {
 
 	v := vm.VM{}
 	v.InitVM()
-	print(string(f))
 	status := v.Interpret(string(f))
 	if status == vm.INTER_RUNTIME_ERROR {
 		fmt.Println("Runtime error.")

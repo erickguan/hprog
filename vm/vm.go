@@ -70,7 +70,6 @@ func (vm *VM) InitVM() {
 		OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
 		OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
 		OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
-		// OpKey{a: value.VT_STRING, b: value.VT_STRING}:     value.VT_STRING,
 	}
 	vm.valueTypeMap = valueTypeMap
 }
@@ -101,22 +100,17 @@ func (vm *VM) ReadConstant() value.Value {
 	return vm.chunk.Constants.Values[index]
 }
 
-func (vm *VM) binaryOP(op string) INTER_RESULT {
+func (vm *VM) binaryOP(op string) bool {
 	b := vm.vstack.Pop()
 	a := vm.vstack.Pop()
 
 	if !value.IsSameType(a.VT, b.VT) {
-		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+		vt, found := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+		if !found {
+			return false
+		}
 		a, b = value.ConvertToExpectedType2(a, b, vt)
 	}
-	// allow "+" for strings
-	/*
-		if !(value.IsNumberType(a.VT) &&
-			value.IsNumberType(b.VT)) {
-			// works!
-			return INTER_RUNTIME_ERROR
-		}
-	*/
 
 	switch op {
 	case "+":
@@ -132,7 +126,7 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 	case "<":
 		vm.vstack.Push(value.Less(&a, &b))
 	}
-	return INTER_OK
+	return true
 }
 
 func (v *VM) StackTrace() {
@@ -162,14 +156,12 @@ func (vm *VM) run() INTER_RESULT {
 		case codes.INSTRUC_NOT:
 			_v, err := vm.vstack.Peek(0)
 			if !value.IsBooleanType(_v.VT) || err != nil {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
 		case codes.INSTRUC_NEGATE:
 			a, err := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) || err != nil {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
@@ -177,18 +169,29 @@ func (vm *VM) run() INTER_RESULT {
 			b := vm.vstack.Pop()
 			a := vm.vstack.Pop()
 			if !value.IsSameType(a.VT, b.VT) {
-				vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+				vt, found := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+				if !found {
+					return INTER_RUNTIME_ERROR
+				}
 				a, b = value.ConvertToExpectedType2(a, b, vt)
 			}
 			vm.vstack.Push(value.Equal(&a, &b))
 		case codes.INSTRUC_ADDITION:
-			vm.binaryOP("+")
+			if !vm.binaryOP("+") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_SUBSTRACT:
-			vm.binaryOP("-")
+			if !vm.binaryOP("-") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_MULTIPLY:
-			vm.binaryOP("*")
+			if !vm.binaryOP("*") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_DIVIDE:
-			vm.binaryOP("/")
+			if !vm.binaryOP("/") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_GREATER:
 			a, _ := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) {
@@ -218,8 +221,11 @@ func (vm *VM) run() INTER_RESULT {
 			value.PrintValue(vm.vstack.Pop())
 			fmt.Printf("\n")
 		case codes.INSTRUC_POP:
-			pop := vm.vstack.Pop()
-			value.PrintValue(pop)
+			peek, err := vm.vstack.Peek(0)
+			if err == nil {
+				vm.vstack.Pop()
+				value.PrintValue(peek)
+			}
 			fmt.Printf("\n")
 		case codes.INSTRUC_RETURN:
 			return INTER_OK
@@ -260,9 +266,10 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	/* DEBUG */
 	/*
 		if vm.debug {
-			// chunk.DissasChunk(&chk, "INSTRUCT")
 		}
 	*/
+
+	chunk.DissasChunk(&chk, "INSTRUCT")
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func BenchmarkLexerNumbers(b *testing.B) {
+func BenchmarkVM(b *testing.B) {
 	var testCases = [...]string{
 		"./data/bool_op.hp",
 		"./data/print_op.hp",
@@ -35,5 +35,24 @@ func BenchmarkLexerNumbers(b *testing.B) {
 			fmt.Println("Runtime error.")
 			break
 		}
+	}
+}
+
+func TestNumbers(t *testing.T) {
+	var testCases = []string{
+		"1 + \"3\"",
+		"\"1\" + 3",
+	}
+	for _, v := range testCases {
+		Execute(v, t)
+	}
+}
+
+func Execute(expression string, t *testing.T) {
+	v := VM{}
+	v.InitVM()
+	status := v.Interpret(expression)
+	if status != INTER_OK {
+		t.Errorf("input %s", expression)
 	}
 }
