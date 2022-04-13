@@ -30,7 +30,23 @@ type VM struct {
 	counter      int
 	vstack       stack.Stack
 	valueTypeMap map[OpKey]value.VALUE_TYPE
-	objects      *value.ObjCtr
+	globals      LookupTable
+	strings      LookupTable
+}
+
+type LookupTable struct {
+	_map map[string]value.Value
+}
+
+func (l *LookupTable) findObj(o string) *value.Value {
+	if value, ok := l._map[o]; ok {
+		return &value
+	}
+	return nil
+}
+
+func (l *LookupTable) deleteObj(o string) {
+	delete(l._map, o)
 }
 
 type OpKey struct {
@@ -39,7 +55,12 @@ type OpKey struct {
 }
 
 func (vm *VM) InitVM() {
-	vm.objects = nil
+	vm.globals = LookupTable{
+		_map: make(map[string]value.Value),
+	}
+	vm.strings = LookupTable{
+		_map: make(map[string]value.Value),
+	}
 	vm.vstack = stack.Stack{
 		Sarray: make([]value.Value, MAX_STACK_SIZE),
 		Top:    -1,
@@ -88,8 +109,8 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
 		a, b = value.ConvertToExpectedType2(a, b, vt)
 	}
+	// allow "+" for strings
 	/*
-		// allow "+" for strings
 		if !(value.IsNumberType(a.VT) &&
 			value.IsNumberType(b.VT)) {
 			// works!
@@ -171,32 +192,39 @@ func (vm *VM) run() INTER_RESULT {
 		case codes.INSTRUC_GREATER:
 			a, _ := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.binaryOP(">")
 		case codes.INSTRUC_LESS:
 			a, _ := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.binaryOP("<")
+		case codes.INSTRUC_DECL_GLOBAL:
+			cnst := vm.ReadConstant()
+			declName := value.AsString(&cnst)
+			v, _ := vm.vstack.Peek(0)
+			vm.globals._map[*declName] = v
+		case codes.INSTRUC_GET_DECL_GLOBAL:
+			cnst := vm.ReadConstant()
+			declName := value.AsString(&cnst)
+			v, found := vm.globals._map[*declName]
+			if !found {
+				fmt.Println("Variable not declared", *declName)
+			}
+			vm.vstack.Push(v)
 		case codes.INSTRUC_PRINT:
 			value.PrintValue(vm.vstack.Pop())
 			fmt.Printf("\n")
-			// NOT NEEDED!
-			//return INTER_OK
-		/*
-			case codes.INSTRUC_POP:
-				pop := vm.vstack.Pop()
-				value.PrintValue(pop)
-				fmt.Printf("\n")
-		*/
+		case codes.INSTRUC_POP:
+			pop := vm.vstack.Pop()
+			value.PrintValue(pop)
+			fmt.Printf("\n")
 		case codes.INSTRUC_RETURN:
 			return INTER_OK
 		}
-		vm.StackTrace()
+		//vm.StackTrace()
 	}
 }
 
@@ -230,7 +258,11 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
-	chunk.DissasChunk(&chk, "INSTRUCT")
+	/*
+		if vm.debug {
+			// chunk.DissasChunk(&chk, "INSTRUCT")
+		}
+	*/
 
 	if len(chk.Code) != 0 {
 		/* INIT START */

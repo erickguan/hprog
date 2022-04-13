@@ -13,6 +13,7 @@ func BenchmarkLexerNumbers(b *testing.B) {
 		"./data/bool_op.hp",
 		"./data/print_op.hp",
 		"./data/sub_ops.hp",
+		"./data/string_ops.hp",
 	}
 	for _, inputFile := range testCases {
 		var buffer []string
@@ -29,7 +30,7 @@ func BenchmarkLexerNumbers(b *testing.B) {
 
 		v := VM{}
 		v.InitVM()
-		status := v.Interpret(strings.Join(buffer[:], "\n\n"))
+		status := v.Interpret(strings.Join(buffer[:], "\n"))
 		if status != INTER_OK {
 			fmt.Println("Runtime error.")
 			break

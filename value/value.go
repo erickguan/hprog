@@ -48,12 +48,10 @@ const (
 type ObjCtr struct {
 	_obj  interface{}
 	otype OType
+	_next *ObjCtr
 }
 
-type ObjString struct {
-	length  int
-	_string string
-}
+type ObjString string
 
 type V struct {
 	_bool   bool
@@ -62,6 +60,10 @@ type V struct {
 	_nil    bool
 	_objCtr *ObjCtr
 }
+
+// TODO: (maybe) create Value from _objCtr
+// by the _objCtr Type (O_TYPE -> VT)
+
 type Value struct {
 	VT VALUE_TYPE
 	_V V
@@ -78,7 +80,7 @@ func PrintValue(v Value) {
 		vts = strconv.FormatBool(v._V._bool)
 	case VT_OBJ:
 		if IsString(&v) {
-			vts = AsString(&v)
+			vts = *AsString(&v)
 		}
 	case VT_NIL:
 		vts = "nil"
@@ -125,14 +127,11 @@ func New(rawValue string, vt VALUE_TYPE) Value {
 		}
 	//case VT_COMPLEX:
 	//case VT_HEX:
-	case VT_NIL:
+	default:
 		return Value{
 			_V: V{_nil: true},
 			VT: VT_NIL,
 		}
-	default:
-		// should never reach here!!!!
-		return Value{}
 	}
 }
 
@@ -152,6 +151,8 @@ func Add(a *Value, b *Value) Value {
 		}
 	case VT_OBJ:
 		t := ConvertToString(a) + ConvertToString(b)
+		FreeObj(a)
+		FreeObj(b)
 		return NewString(t)
 	}
 	// TODO: return error!
@@ -326,13 +327,9 @@ func ConvertToExpectedType2(a Value, b Value, v VALUE_TYPE) (Value, Value) {
 }
 
 func NewString(v string) Value {
-	str := ObjString{
-		length:  len(v),
-		_string: v,
-	}
 	o := ObjCtr{
+		_obj:  &v,
 		otype: O_STRING,
-		_obj:  &str,
 	}
 	return Value{
 		_V: V{_objCtr: &o},
@@ -350,15 +347,16 @@ func ConvertToString(v *Value) string {
 	if !IsString(v) {
 		return "" //, false
 	}
-	return AsString(v) //, true
+	return *AsString(v) //, true
 }
 
-func FreeObj(v *Value)                           { v._V._objCtr = nil }
-func AsString(v *Value) string                   { return v._V._objCtr._obj.(*ObjString)._string }
-func IsString(v *Value) bool                     { return ObjType(v) == O_STRING }
-func ObjType(v *Value) OType                     { return AsObj(v).otype }
-func AsObj(v *Value) *ObjCtr                     { return v._V._objCtr }
-func IsObj(v VALUE_TYPE) bool                    { return v == VT_OBJ }
+func FreeObj(v *Value)          { v._V._objCtr = nil }
+func AsString(v *Value) *string { return v._V._objCtr._obj.(*string) }
+func IsString(v *Value) bool    { return ObjType(v) == O_STRING }
+func ObjType(v *Value) OType    { return AsObj(v).otype }
+func AsObj(v *Value) *ObjCtr    { return v._V._objCtr }
+func IsObj(v VALUE_TYPE) bool   { return v == VT_OBJ }
+
 func IsNumberType(v VALUE_TYPE) bool             { return v == VT_FLOAT || v == VT_INT }
 func IsSameType(a VALUE_TYPE, b VALUE_TYPE) bool { return a == b }
 func IsBooleanType(v VALUE_TYPE) bool            { return v == VT_BOOL }

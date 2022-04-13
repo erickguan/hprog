@@ -2,9 +2,9 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/badc0re/hprog/vm"
 )
@@ -15,21 +15,16 @@ func readline(idet string, scanner *bufio.Scanner) bool {
 }
 
 func loadFile(inputFile string) {
-	var buffer []string
-
-	hFile, err := os.Open(inputFile)
+	f, err := os.ReadFile(inputFile)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fileScanner := bufio.NewScanner(hFile)
-	for fileScanner.Scan() {
-		buffer = append(buffer, fileScanner.Text())
-	}
 
 	v := vm.VM{}
 	v.InitVM()
-	status := v.Interpret(strings.Join(buffer[:], "\n\n"))
+	print(string(f))
+	status := v.Interpret(string(f))
 	if status == vm.INTER_RUNTIME_ERROR {
 		fmt.Println("Runtime error.")
 	}
@@ -40,55 +35,46 @@ func OnNewLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
 }
 
 func main() {
-	/*
-		var buffer []string
-		var inputFile string
+	var buffer []string
+	var inputFile string
 
-		flag.StringVar(&inputFile, "file", "", "Input hprog file.")
-		flag.Parse()
+	flag.StringVar(&inputFile, "file", "", "Input hprog file.")
+	flag.Parse()
 
-		if len(inputFile) != 0 {
-			loadFile(inputFile)
-			os.Exit(1)
-		}
+	if len(inputFile) != 0 {
+		loadFile(inputFile)
+		os.Exit(1)
+	}
 
-		const idet = "hprog> "
-		fmt.Println("Hprog Version 0.01")
-		fmt.Println("One way to escape, ctr-c to exit.")
+	const idet = "hprog> "
+	fmt.Println("Hprog Version 0.01")
+	fmt.Println("One way to escape, ctr-c to exit.")
 
-		// INPUT SCANNER
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Split(OnNewLine)
+	// INPUT SCANNER
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(OnNewLine)
 
-		// INIT VM
-		v := vm.VM{}
-		v.InitVM()
-
-		// readlines and process
-		for readline(idet, scanner) {
-			var sline = scanner.Text()
-
-			if scanner.Err() != nil {
-				fmt.Printf("error: %s\n", scanner.Err())
-			}
-
-			if len(sline) > 0 {
-				status := v.Interpret(sline)
-				if status != vm.INTER_OK {
-					fmt.Println("Runtime error.")
-				}
-				buffer = append(buffer, sline)
-			}
-		}
-	*/
-
+	// INIT VM
 	v := vm.VM{}
 	v.InitVM()
-	status := v.Interpret("print(\"a\" + \"B\")")
-	if status == vm.INTER_RUNTIME_ERROR {
-		fmt.Println("Runtime error.")
+
+	// readlines and process
+	for readline(idet, scanner) {
+		var sline = scanner.Text()
+
+		if scanner.Err() != nil {
+			fmt.Printf("error: %s\n", scanner.Err())
+		}
+
+		if len(sline) > 0 {
+			status := v.Interpret(sline)
+			if status != vm.INTER_OK {
+				fmt.Println("Runtime error.")
+			}
+			buffer = append(buffer, sline)
+		}
 	}
-	v.FreeVM()
+
 	/*
 		v.InitVM()
 		chk := chunk.Chunk{}
@@ -129,7 +115,7 @@ func main() {
 			lex := lexer.Init("print1\n")
 			var result []token.Token
 			for {
-				tkn, _ := lex.Consume()
+				tkn, _ := lex.Ckonsume()
 				a := *tkn
 				if a.Type == token.EOF {
 					fmt.Println("DONE scan")

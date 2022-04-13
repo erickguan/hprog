@@ -207,23 +207,43 @@ func (p *Parser) Match(tokenType token.TokenType) bool {
 
 func (p *Parser) Decl() {
 	if p.Match(token.DECLARE) {
-		p.varDecl()
+		p.declVar()
 	} else {
 		p.Statement()
 	}
 }
 
-func (p *Parser) varDecl() {
+func (p *Parser) declVar() {
+	index := p.parseVar("Expected identifier Name.")
 	if p.Match(token.EQUAL) {
 		p.Expression()
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError")
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, malformed delcaration.")
+	p.defineDeclVar(index)
+}
+
+func (p *Parser) parseVar(msg string) (index uint) {
+	p.Consume(token.IDENTIFIER, msg)
+	return p.identifierConst(p.previous.Value)
+}
+
+func (p *Parser) identifierConst(name string) (index uint) {
+	return p.makeConstant(value.NewString(name))
+}
+
+func (p *Parser) defineDeclVar(index uint) {
+	p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
 }
 
 func (p *Parser) Variable() {
+	p.definedVar(p.previous.Value)
+}
 
+func (p *Parser) definedVar(name string) {
+	idx := p.identifierConst(name)
+	p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, idx)
 }
 
 func (p *Parser) Statement() {
@@ -237,13 +257,14 @@ func (p *Parser) Statement() {
 func (p *Parser) ExpressionStmt() {
 	p.Expression()
 	// EOF | \n
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError")
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError Expression")
 	p.emit(codes.INSTRUC_POP)
 }
 
 func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
 	p.Grouping()
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError Expression")
 	p.emit(codes.INSTRUC_PRINT)
 }
 
@@ -293,7 +314,6 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		token.GREATER_EQUAL: {nil, p.Binary, PREC_COMPARE},
 		token.LESS:          {nil, p.Binary, PREC_COMPARE},
 		token.LESS_EQUAL:    {nil, p.Binary, PREC_COMPARE},
-		token.IDENTIFIER:    {nil, nil, PREC_NONE},
 		token.STRING:        {p.String, nil, PREC_NONE},
 		token.NUMBER:        {p.Number, nil, PREC_NONE},
 		token.AND:           {nil, nil, PREC_NONE},
@@ -307,7 +327,7 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		token.NIL:           {p.Literal, nil, PREC_NONE},
 		token.PRINT:         {nil, nil, PREC_NONE},
 		token.RETURN:        {nil, nil, PREC_NONE},
-		token.DECLARE:       {p.Variable, nil, PREC_NONE},
+		token.IDENTIFIER:    {p.Variable, nil, PREC_NONE},
 		token.WHILE:         {nil, nil, PREC_NONE},
 		token.ERR:           {nil, nil, PREC_NONE},
 		token.EOF:           {nil, nil, PREC_NONE},

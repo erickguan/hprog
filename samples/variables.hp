@@ -1,0 +1,3 @@
+decl a = "AAA"
+decl b = "aaa" + a
+print(b)
