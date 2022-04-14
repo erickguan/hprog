@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/badc0re/hprog/vm"
 )
@@ -16,21 +15,15 @@ func readline(idet string, scanner *bufio.Scanner) bool {
 }
 
 func loadFile(inputFile string) {
-	var buffer []string
-
-	hFile, err := os.Open(inputFile)
+	f, err := os.ReadFile(inputFile)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fileScanner := bufio.NewScanner(hFile)
-	for fileScanner.Scan() {
-		buffer = append(buffer, fileScanner.Text())
-	}
 
 	v := vm.VM{}
 	v.InitVM()
-	status := v.Interpret(strings.Join(buffer[:], "\n\n"))
+	status := v.Interpret(string(f))
 	if status == vm.INTER_RUNTIME_ERROR {
 		fmt.Println("Runtime error.")
 	}
@@ -121,7 +114,7 @@ func main() {
 			lex := lexer.Init("print1\n")
 			var result []token.Token
 			for {
-				tkn, _ := lex.Consume()
+				tkn, _ := lex.Ckonsume()
 				a := *tkn
 				if a.Type == token.EOF {
 					fmt.Println("DONE scan")

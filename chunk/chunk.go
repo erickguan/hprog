@@ -80,6 +80,10 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 		return OpInstruction("INSTRUC_PRINT", offset)
 	case codes.INSTRUC_POP:
 		return OpInstruction("INSTRUC_POP", offset)
+	case codes.INSTRUC_DECL_GLOBAL:
+		return OpInstruction("INSTRUC_DECL_GLOBAL", offset)
+	case codes.INSTRUC_GET_DECL_GLOBAL:
+		return OpInstruction("INSTRUC_GET_DECL_GLOBAL", offset)
 	}
 	// NOTE: should never reach!
 	return 0

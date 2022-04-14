@@ -18,6 +18,9 @@ func (stack *Stack) Push(value value.Value) {
 }
 
 func (stack *Stack) Pop() value.Value {
+	if stack.Top == -1 {
+		return value.Value{}
+	}
 	_r := stack.Sarray[stack.Top]
 	stack.Top--
 	return _r

@@ -8,11 +8,12 @@ import (
 	"testing"
 )
 
-func BenchmarkLexerNumbers(b *testing.B) {
+func BenchmarkVM(b *testing.B) {
 	var testCases = [...]string{
 		"./data/bool_op.hp",
 		"./data/print_op.hp",
 		"./data/sub_ops.hp",
+		"./data/string_ops.hp",
 	}
 	for _, inputFile := range testCases {
 		var buffer []string
@@ -29,10 +30,29 @@ func BenchmarkLexerNumbers(b *testing.B) {
 
 		v := VM{}
 		v.InitVM()
-		status := v.Interpret(strings.Join(buffer[:], "\n\n"))
+		status := v.Interpret(strings.Join(buffer[:], "\n"))
 		if status != INTER_OK {
 			fmt.Println("Runtime error.")
 			break
 		}
+	}
+}
+
+func _TestNumbers(t *testing.T) {
+	var testCases = []string{
+		"1 + \"3\"",
+		"\"1\" + 3",
+	}
+	for _, v := range testCases {
+		Execute(v, t)
+	}
+}
+
+func Execute(expression string, t *testing.T) {
+	v := VM{}
+	v.InitVM()
+	status := v.Interpret(expression)
+	if status != INTER_OK {
+		t.Errorf("input %s", expression)
 	}
 }
