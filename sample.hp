@@ -1,5 +1,0 @@
-decl a = 100
-decl b = 100
-decl c = 100
-decl d = 100
-a+b = c * d
