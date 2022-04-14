@@ -1,5 +1,7 @@
 package value
 
+// move to generics soon...
+
 import (
 	"fmt"
 	"strconv"
@@ -31,6 +33,7 @@ var VTmap = map[VALUE_TYPE]string{
 	VT_INT:     "VT_INT",
 	VT_COMPLEX: "VT_COMPLEX",
 	VT_HEX:     "VT_HEX",
+	VT_OBJ:     "VT_OBJ",
 
 	VT_NUMBER: "VT_NUMBER",
 }
@@ -42,23 +45,25 @@ const (
 	O_STRING
 )
 
-type Obj struct {
+type ObjCtr struct {
+	_obj  interface{}
 	otype OType
+	_next *ObjCtr
 }
 
-type ObjString struct {
-	obj     Obj
-	length  int
-	_string *string
-}
+type ObjString string
 
 type V struct {
-	_bool bool
-	_int  int
-	_f64  float64
-	_nil  bool
-	_obj  *Obj
+	_bool   bool
+	_int    int
+	_f64    float64
+	_nil    bool
+	_objCtr *ObjCtr
 }
+
+// TODO: (maybe) create Value from _objCtr
+// by the _objCtr Type (O_TYPE -> VT)
+
 type Value struct {
 	VT VALUE_TYPE
 	_V V
@@ -73,10 +78,16 @@ func PrintValue(v Value) {
 		vts = strconv.FormatFloat(v._V._f64, 'E', -1, 64)
 	case VT_BOOL:
 		vts = strconv.FormatBool(v._V._bool)
+	case VT_OBJ:
+		if IsString(&v) {
+			vts = *AsString(&v)
+		}
 	case VT_NIL:
 		vts = "nil"
 	}
-	fmt.Printf("%s (%s)", vts, VTmap[v.VT])
+	if len(vts) > 0 {
+		fmt.Printf("%s (%s)", vts, VTmap[v.VT])
+	}
 }
 
 func NewBool(value bool) Value {
@@ -118,14 +129,11 @@ func New(rawValue string, vt VALUE_TYPE) Value {
 		}
 	//case VT_COMPLEX:
 	//case VT_HEX:
-	case VT_NIL:
+	default:
 		return Value{
 			_V: V{_nil: true},
 			VT: VT_NIL,
 		}
-	default:
-		// should never reach here!!!!
-		return Value{}
 	}
 }
 
@@ -143,7 +151,9 @@ func Add(a *Value, b *Value) Value {
 			_V: V{_int: t},
 			VT: VT_INT,
 		}
-		// case VT_STRING:
+	case VT_OBJ:
+		t := ConvertToString(a) + ConvertToString(b)
+		return NewString(t)
 	}
 	// TODO: return error!
 	return Value{}
@@ -254,6 +264,8 @@ func Equal(a *Value, b *Value) Value {
 		return NewBool(a._V._int == b._V._int)
 	case VT_FLOAT:
 		return NewBool(a._V._f64 == b._V._f64)
+	case VT_OBJ:
+		return NewBool(ConvertToString(a) == ConvertToString(b))
 	default:
 		return NewBool(false)
 	}
@@ -287,7 +299,6 @@ func Greater(a *Value, b *Value) Value {
 	case VT_FLOAT:
 		return NewBool(a._V._f64 > b._V._f64)
 	default:
-		fmt.Println("AAA")
 		return NewBool(false)
 	}
 }
@@ -316,6 +327,34 @@ func ConvertToExpectedType2(a Value, b Value, v VALUE_TYPE) (Value, Value) {
 	b = ConvertToExpectedType1(b, v)
 	return a, b
 }
+
+func NewString(v string) Value {
+	o := ObjCtr{
+		_obj:  &v,
+		otype: O_STRING,
+	}
+	return Value{
+		_V: V{_objCtr: &o},
+		VT: VT_OBJ,
+	}
+}
+
+/*
+func ObjAsValue(o *Obj) Value {
+	return Value{_V: V{_obj: o}, VT: VT_OBJ}
+}
+*/
+
+func ConvertToString(v *Value) string {
+	return *AsString(v) //, true
+}
+
+func FreeObj(v *Value)          { v._V._objCtr = nil }
+func AsString(v *Value) *string { return v._V._objCtr._obj.(*string) }
+func IsString(v *Value) bool    { return ObjType(v) == O_STRING }
+func ObjType(v *Value) OType    { return AsObj(v).otype }
+func AsObj(v *Value) *ObjCtr    { return v._V._objCtr }
+func IsObj(v *Value) bool       { return v.VT == VT_OBJ }
 
 func IsNumberType(v VALUE_TYPE) bool             { return v == VT_FLOAT || v == VT_INT }
 func IsSameType(a VALUE_TYPE, b VALUE_TYPE) bool { return a == b }

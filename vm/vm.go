@@ -24,13 +24,36 @@ const (
 	INTER_RUNTIME_ERROR
 )
 
+var valueTypeMap = map[OpKey]value.VALUE_TYPE{
+	OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
+	OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
+	OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
+	OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
+}
+
 type VM struct {
 	chunk        *chunk.Chunk
 	ip           *interface{}
 	counter      int
 	vstack       stack.Stack
 	valueTypeMap map[OpKey]value.VALUE_TYPE
-	objects      *value.Obj
+	globals      LookupTable
+	strings      LookupTable
+}
+
+type LookupTable struct {
+	_map map[string]value.Value
+}
+
+func (l *LookupTable) findObj(o string) *value.Value {
+	if value, ok := l._map[o]; ok {
+		return &value
+	}
+	return nil
+}
+
+func (l *LookupTable) deleteObj(o string) {
+	delete(l._map, o)
 }
 
 type OpKey struct {
@@ -39,17 +62,15 @@ type OpKey struct {
 }
 
 func (vm *VM) InitVM() {
-	vm.objects = nil
+	vm.globals = LookupTable{
+		_map: make(map[string]value.Value),
+	}
+	vm.strings = LookupTable{
+		_map: make(map[string]value.Value),
+	}
 	vm.vstack = stack.Stack{
 		Sarray: make([]value.Value, MAX_STACK_SIZE),
 		Top:    -1,
-	}
-	valueTypeMap := map[OpKey]value.VALUE_TYPE{
-		OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
-		OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
-		OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
-		OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
-		// OpKey{a: value.VT_STRING, b: value.VT_STRING}:     value.VT_STRING,
 	}
 	vm.valueTypeMap = valueTypeMap
 }
@@ -80,19 +101,16 @@ func (vm *VM) ReadConstant() value.Value {
 	return vm.chunk.Constants.Values[index]
 }
 
-func (vm *VM) binaryOP(op string) INTER_RESULT {
+func (vm *VM) binaryOP(op string) bool {
 	b := vm.vstack.Pop()
 	a := vm.vstack.Pop()
 
 	if !value.IsSameType(a.VT, b.VT) {
-		vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+		vt, found := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+		if !found {
+			return false
+		}
 		a, b = value.ConvertToExpectedType2(a, b, vt)
-	}
-	// allow "+" for strings
-	if !(value.IsNumberType(a.VT) &&
-		value.IsNumberType(b.VT)) {
-		// works!
-		return INTER_RUNTIME_ERROR
 	}
 
 	switch op {
@@ -109,7 +127,7 @@ func (vm *VM) binaryOP(op string) INTER_RESULT {
 	case "<":
 		vm.vstack.Push(value.Less(&a, &b))
 	}
-	return INTER_OK
+	return true
 }
 
 func (v *VM) StackTrace() {
@@ -136,17 +154,17 @@ func (vm *VM) run() INTER_RESULT {
 			vm.vstack.Push(value.NewBool(true))
 		case codes.INSTRUC_FALSE:
 			vm.vstack.Push(value.NewBool(false))
+		case codes.INSTRUC_ERR:
+			return INTER_RUNTIME_ERROR
 		case codes.INSTRUC_NOT:
 			_v, err := vm.vstack.Peek(0)
 			if !value.IsBooleanType(_v.VT) || err != nil {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
 		case codes.INSTRUC_NEGATE:
 			a, err := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) || err != nil {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(value.Negate(vm.vstack.Pop()))
@@ -154,43 +172,71 @@ func (vm *VM) run() INTER_RESULT {
 			b := vm.vstack.Pop()
 			a := vm.vstack.Pop()
 			if !value.IsSameType(a.VT, b.VT) {
-				vt := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+				vt, found := vm.valueTypeMap[OpKey{a: a.VT, b: b.VT}]
+				if !found {
+					return INTER_RUNTIME_ERROR
+				}
 				a, b = value.ConvertToExpectedType2(a, b, vt)
 			}
 			vm.vstack.Push(value.Equal(&a, &b))
 		case codes.INSTRUC_ADDITION:
-			vm.binaryOP("+")
+			if !vm.binaryOP("+") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_SUBSTRACT:
-			vm.binaryOP("-")
+			if !vm.binaryOP("-") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_MULTIPLY:
-			vm.binaryOP("*")
+			if !vm.binaryOP("*") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_DIVIDE:
-			vm.binaryOP("/")
+			if !vm.binaryOP("/") {
+				return INTER_RUNTIME_ERROR
+			}
 		case codes.INSTRUC_GREATER:
 			a, _ := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.binaryOP(">")
 		case codes.INSTRUC_LESS:
 			a, _ := vm.vstack.Peek(0)
 			if !value.IsNumberType(a.VT) {
-				// error
 				return INTER_RUNTIME_ERROR
 			}
 			vm.binaryOP("<")
+		case codes.INSTRUC_DECL_GLOBAL:
+			cnst := vm.ReadConstant()
+			declName := value.AsString(&cnst)
+			v, _ := vm.vstack.Peek(0)
+			/*
+				v, found := vm.globals._map[*declName]
+				if found {
+					fmt.Println("Variable already declared", *declName)
+				}
+			*/
+			vm.globals._map[*declName] = v
+		case codes.INSTRUC_GET_DECL_GLOBAL:
+			cnst := vm.ReadConstant()
+			declName := value.AsString(&cnst)
+			v, found := vm.globals._map[*declName]
+			if !found {
+				fmt.Println("Variable not declared", *declName)
+				return INTER_RUNTIME_ERROR
+			}
+			vm.vstack.Push(v)
 		case codes.INSTRUC_PRINT:
 			value.PrintValue(vm.vstack.Pop())
 			fmt.Printf("\n")
-			// NOT NEEDED!
-			//return INTER_OK
-		/*
-			case codes.INSTRUC_POP:
-				pop := vm.vstack.Pop()
-				value.PrintValue(pop)
-				fmt.Printf("\n")
-		*/
+		case codes.INSTRUC_POP:
+			peek, err := vm.vstack.Peek(0)
+			if err == nil {
+				vm.vstack.Pop()
+				value.PrintValue(peek)
+			}
+			fmt.Printf("\n")
 		case codes.INSTRUC_RETURN:
 			return INTER_OK
 		}
@@ -228,6 +274,11 @@ func (vm *VM) Interpret(source string) INTER_RESULT {
 	}
 
 	/* DEBUG */
+	/*
+		if vm.debug {
+		}
+	*/
+
 	chunk.DissasChunk(&chk, "INSTRUCT")
 
 	if len(chk.Code) != 0 {
