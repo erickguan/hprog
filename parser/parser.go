@@ -87,7 +87,20 @@ type ParseRule struct {
 	prec   PREC
 }
 
-func getRule(p *Parser, tknType token.TokenType) ParseRule {
+func (p *Parser) emit(code interface{}) {
+	p.chk.WriteChunk(code, p.previous.Line)
+}
+
+func (p *Parser) emit2(code1 interface{}, code2 interface{}) {
+	p.chk.WriteChunk(code1, p.previous.Line)
+	p.chk.WriteChunk(code2, p.previous.Line)
+}
+
+func (p *Parser) EndCompile() {
+	p.emitReturn()
+}
+
+func (p *Parser) getRule(tknType token.TokenType) ParseRule {
 	return p.tknMap[tknType]
 }
 
@@ -111,7 +124,7 @@ func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string
 
 func (p *Parser) parsePrec(prec PREC) {
 	p.Advance()
-	prefRule := getRule(p, p.previous.Type).prefix
+	prefRule := p.getRule(p.previous.Type).prefix
 	if prefRule == nil {
 		return
 	}
@@ -120,12 +133,12 @@ func (p *Parser) parsePrec(prec PREC) {
 	prefRule(p, canAssign)
 
 	for {
-		prec1 := getRule(p, p.current.Type).prec
+		prec1 := p.getRule(p.current.Type).prec
 		if prec >= prec1 {
 			break
 		}
 		p.Advance()
-		infix := getRule(p, p.previous.Type).infix
+		infix := p.getRule(p.previous.Type).infix
 		if infix == nil {
 			p.reportError(p.current, "Syntax Error, expression not allowed.")
 			return
@@ -135,65 +148,6 @@ func (p *Parser) parsePrec(prec PREC) {
 	if canAssign && p.Match(token.EQUAL) {
 		p.reportError(p.current, "Syntax Error, cannot assign on operator.")
 	}
-}
-
-func Unary(p *Parser, canAssign bool) {
-	tknType := p.previous.Type
-
-	p.parsePrec(PREC_UNARY)
-
-	switch tknType {
-	case token.MINUS:
-		p.emit(codes.INSTRUC_NEGATE)
-	case token.EXCL:
-		p.emit(codes.INSTRUC_NOT)
-	default:
-		return
-	}
-}
-
-func Binary(p *Parser, canAssign bool) {
-	tknType := p.previous.Type
-	rule := getRule(p, tknType)
-	p.parsePrec(rule.prec + 1)
-
-	switch tknType {
-	case token.PLUS:
-		p.emit(codes.INSTRUC_ADDITION)
-	case token.MINUS:
-		p.emit(codes.INSTRUC_SUBSTRACT)
-	case token.STAR:
-		p.emit(codes.INSTRUC_MULTIPLY)
-	case token.SLASH:
-		p.emit(codes.INSTRUC_DIVIDE)
-	case token.EQUAL_EQUAL:
-		p.emit(codes.INSTRUC_EQUAL)
-	case token.EXCL_EQUAL:
-		p.emit2(codes.INSTRUC_EQUAL, codes.INSTRUC_NOT)
-	case token.GREATER:
-		p.emit(codes.INSTRUC_GREATER)
-	case token.GREATER_EQUAL:
-		p.emit2(codes.INSTRUC_LESS, codes.INSTRUC_NOT)
-	case token.LESS:
-		p.emit(codes.INSTRUC_LESS)
-	case token.LESS_EQUAL:
-		p.emit2(codes.INSTRUC_GREATER, codes.INSTRUC_NOT)
-	default:
-		return
-	}
-}
-
-func (p *Parser) emit(code interface{}) {
-	p.chk.WriteChunk(code, p.previous.Line)
-}
-
-func (p *Parser) emit2(code1 interface{}, code2 interface{}) {
-	p.chk.WriteChunk(code1, p.previous.Line)
-	p.chk.WriteChunk(code2, p.previous.Line)
-}
-
-func (p *Parser) EndCompile() {
-	p.emitReturn()
 }
 
 func (p *Parser) emitReturn() {
@@ -206,34 +160,6 @@ func (p *Parser) emitConst(v value.Value) {
 
 func (p *Parser) makeConstant(v value.Value) uint {
 	return p.chk.AddVariable(v)
-}
-
-func Number(p *Parser, canAssign bool) {
-	dt := value.DetectNumberTypeByConversion(p.previous.Value)
-	p.emitConst(value.New(p.previous.Value, dt))
-}
-
-func String(p *Parser, canAssign bool) {
-	p.emitConst(value.NewString(p.previous.Value))
-}
-
-func Literal(p *Parser, canAssign bool) {
-	tokenType := p.previous.Type
-	switch tokenType {
-	case token.BOOL_FALSE:
-		p.emit(codes.INSTRUC_FALSE)
-	case token.BOOL_TRUE:
-		p.emit(codes.INSTRUC_TRUE)
-	case token.NIL:
-		p.emit(codes.INSTRUC_NIL)
-	default:
-		return
-	}
-}
-
-func Grouping(p *Parser, assign bool) {
-	p.Expression()
-	p.Consume(token.CP, "Expected ')' after expression.")
 }
 
 func (p *Parser) Expression() {
@@ -283,6 +209,26 @@ func (p *Parser) defineDeclVar(index uint) {
 	p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
 }
 
+func Unary(p *Parser, canAssign bool) {
+	tknType := p.previous.Type
+
+	p.parsePrec(PREC_UNARY)
+
+	switch tknType {
+	case token.MINUS:
+		p.emit(codes.INSTRUC_NEGATE)
+	case token.EXCL:
+		p.emit(codes.INSTRUC_NOT)
+	default:
+		return
+	}
+}
+
+func Grouping(p *Parser, assign bool) {
+	p.Expression()
+	p.Consume(token.CP, "Expected ')' after expression.")
+}
+
 func Variable(p *Parser, canAssign bool) {
 	p.definedVar(p.previous.Value, canAssign)
 }
@@ -291,6 +237,8 @@ func (p *Parser) definedVar(name string, canAssign bool) {
 	index := p.identifierConst(name)
 
 	if canAssign && p.Match(token.EQUAL) {
+		// NOTE: the variable needs to be declared first
+		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
 		p.Expression()
 		p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
 	} else {
@@ -309,7 +257,7 @@ func (p *Parser) Statement() {
 func (p *Parser) ExpressionStmt() {
 	p.Expression()
 	// EOF | \n
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError Expression")
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, Expression")
 	p.emit(codes.INSTRUC_POP)
 }
 
@@ -321,7 +269,7 @@ func (p *Parser) PrintStmt() {
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError Expression")
+	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, Expression")
 	p.emit(codes.INSTRUC_PRINT)
 }
 
@@ -339,6 +287,60 @@ func (p *Parser) Advance() {
 	p.current = tkn
 }
 
+func Binary(p *Parser, canAssign bool) {
+	tknType := p.previous.Type
+	rule := p.getRule(tknType)
+	p.parsePrec(rule.prec + 1)
+
+	switch tknType {
+	case token.PLUS:
+		p.emit(codes.INSTRUC_ADDITION)
+	case token.MINUS:
+		p.emit(codes.INSTRUC_SUBSTRACT)
+	case token.STAR:
+		p.emit(codes.INSTRUC_MULTIPLY)
+	case token.SLASH:
+		p.emit(codes.INSTRUC_DIVIDE)
+	case token.EQUAL_EQUAL:
+		p.emit(codes.INSTRUC_EQUAL)
+	case token.EXCL_EQUAL:
+		p.emit2(codes.INSTRUC_EQUAL, codes.INSTRUC_NOT)
+	case token.GREATER:
+		p.emit(codes.INSTRUC_GREATER)
+	case token.GREATER_EQUAL:
+		p.emit2(codes.INSTRUC_LESS, codes.INSTRUC_NOT)
+	case token.LESS:
+		p.emit(codes.INSTRUC_LESS)
+	case token.LESS_EQUAL:
+		p.emit2(codes.INSTRUC_GREATER, codes.INSTRUC_NOT)
+	default:
+		return
+	}
+}
+
+func Number(p *Parser, canAssign bool) {
+	dt := value.DetectNumberTypeByConversion(p.previous.Value)
+	p.emitConst(value.New(p.previous.Value, dt))
+}
+
+func String(p *Parser, canAssign bool) {
+	p.emitConst(value.NewString(p.previous.Value))
+}
+
+func Literal(p *Parser, canAssign bool) {
+	tokenType := p.previous.Type
+	switch tokenType {
+	case token.BOOL_FALSE:
+		p.emit(codes.INSTRUC_FALSE)
+	case token.BOOL_TRUE:
+		p.emit(codes.INSTRUC_TRUE)
+	case token.NIL:
+		p.emit(codes.INSTRUC_NIL)
+	default:
+		return
+	}
+}
+
 func (p *Parser) reportError(tkn *token.Token, what string) {
 	p.ppanic = true
 	fmt.Fprintf(os.Stderr, "[line:%d, pos:%d] Error, %s\n",
@@ -351,7 +353,7 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		lex: lex,
 		chk: chk,
 	}
-	tknMap := tknMap
+	p.tknMap = tknMap
 	/*
 		Init MUST return a reference, otherwise
 		the functions would not point to the correct
@@ -359,6 +361,5 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 
 		HEAP HEAP HEAP...hurray?
 	*/
-	p.tknMap = tknMap
 	return &p
 }

@@ -24,6 +24,13 @@ const (
 	INTER_RUNTIME_ERROR
 )
 
+var valueTypeMap = map[OpKey]value.VALUE_TYPE{
+	OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
+	OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
+	OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
+	OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
+}
+
 type VM struct {
 	chunk        *chunk.Chunk
 	ip           *interface{}
@@ -64,12 +71,6 @@ func (vm *VM) InitVM() {
 	vm.vstack = stack.Stack{
 		Sarray: make([]value.Value, MAX_STACK_SIZE),
 		Top:    -1,
-	}
-	valueTypeMap := map[OpKey]value.VALUE_TYPE{
-		OpKey{a: value.VT_FLOAT, b: value.VT_FLOAT}: value.VT_FLOAT,
-		OpKey{a: value.VT_INT, b: value.VT_FLOAT}:   value.VT_FLOAT,
-		OpKey{a: value.VT_FLOAT, b: value.VT_INT}:   value.VT_FLOAT,
-		OpKey{a: value.VT_INT, b: value.VT_INT}:     value.VT_INT,
 	}
 	vm.valueTypeMap = valueTypeMap
 }
@@ -223,6 +224,7 @@ func (vm *VM) run() INTER_RESULT {
 			v, found := vm.globals._map[*declName]
 			if !found {
 				fmt.Println("Variable not declared", *declName)
+				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(v)
 		case codes.INSTRUC_PRINT:

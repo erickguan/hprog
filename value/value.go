@@ -85,7 +85,9 @@ func PrintValue(v Value) {
 	case VT_NIL:
 		vts = "nil"
 	}
-	fmt.Printf("%s (%s)", vts, VTmap[v.VT])
+	if len(vts) > 0 {
+		fmt.Printf("%s (%s)", vts, VTmap[v.VT])
+	}
 }
 
 func NewBool(value bool) Value {

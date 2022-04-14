@@ -38,7 +38,7 @@ func BenchmarkVM(b *testing.B) {
 	}
 }
 
-func TestNumbers(t *testing.T) {
+func _TestNumbers(t *testing.T) {
 	var testCases = []string{
 		"1 + \"3\"",
 		"\"1\" + 3",
