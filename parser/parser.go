@@ -40,7 +40,46 @@ type Parser struct {
 	chk *chunk.Chunk
 }
 
-type ParseFn func()
+var tknMap = map[token.TokenType]ParseRule{
+	token.OP:            {Grouping, nil, PREC_NONE},
+	token.CP:            {nil, nil, PREC_NONE},
+	token.LB:            {nil, nil, PREC_NONE},
+	token.RB:            {nil, nil, PREC_NONE},
+	token.COMMA:         {nil, nil, PREC_NONE},
+	token.DOT:           {nil, nil, PREC_NONE},
+	token.MINUS:         {Unary, Binary, PREC_TERM},
+	token.PLUS:          {nil, Binary, PREC_TERM},
+	token.SEMICOLON:     {nil, nil, PREC_NONE},
+	token.SLASH:         {nil, Binary, PREC_FACTOR},
+	token.STAR:          {nil, Binary, PREC_FACTOR},
+	token.EXCL:          {Unary, nil, PREC_TERM},
+	token.EXCL_EQUAL:    {nil, Binary, PREC_EQUALLITY},
+	token.EQUAL:         {nil, nil, PREC_NONE},
+	token.EQUAL_EQUAL:   {nil, Binary, PREC_COMPARE},
+	token.GREATER:       {nil, Binary, PREC_COMPARE},
+	token.GREATER_EQUAL: {nil, Binary, PREC_COMPARE},
+	token.LESS:          {nil, Binary, PREC_COMPARE},
+	token.LESS_EQUAL:    {nil, Binary, PREC_COMPARE},
+	token.STRING:        {String, nil, PREC_NONE},
+	token.NUMBER:        {Number, nil, PREC_NONE},
+	token.AND:           {nil, nil, PREC_NONE},
+	token.ELSE:          {nil, nil, PREC_NONE},
+	token.BOOL_FALSE:    {Literal, nil, PREC_NONE},
+	token.BOOL_TRUE:     {Literal, nil, PREC_NONE},
+	token.FOR:           {nil, nil, PREC_NONE},
+	token.FUNCTION:      {nil, nil, PREC_NONE},
+	token.IF:            {nil, nil, PREC_NONE},
+	token.OR:            {nil, nil, PREC_NONE},
+	token.NIL:           {Literal, nil, PREC_NONE},
+	token.PRINT:         {nil, nil, PREC_NONE},
+	token.RETURN:        {nil, nil, PREC_NONE},
+	token.IDENTIFIER:    {Variable, nil, PREC_NONE},
+	token.WHILE:         {nil, nil, PREC_NONE},
+	token.ERR:           {nil, nil, PREC_NONE},
+	token.EOF:           {nil, nil, PREC_NONE},
+}
+
+type ParseFn func(*Parser, bool)
 
 type ParseRule struct {
 	prefix ParseFn
@@ -48,7 +87,7 @@ type ParseRule struct {
 	prec   PREC
 }
 
-func (p *Parser) getRule(tknType token.TokenType) ParseRule {
+func getRule(p *Parser, tknType token.TokenType) ParseRule {
 	return p.tknMap[tknType]
 }
 
@@ -70,34 +109,38 @@ func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string
 	p.reportError(p.current, message)
 }
 
-func (p *Parser) ParsePrec(prec PREC) {
+func (p *Parser) parsePrec(prec PREC) {
 	p.Advance()
-	prefRule := p.getRule(p.previous.Type).prefix
+	prefRule := getRule(p, p.previous.Type).prefix
 	if prefRule == nil {
 		return
 	}
 
-	prefRule()
+	canAssign := prec <= PREC_ASSIGN
+	prefRule(p, canAssign)
 
 	for {
-		prec1 := p.getRule(p.current.Type).prec
+		prec1 := getRule(p, p.current.Type).prec
 		if prec >= prec1 {
 			break
 		}
 		p.Advance()
-		infix := p.getRule(p.previous.Type).infix
+		infix := getRule(p, p.previous.Type).infix
 		if infix == nil {
 			p.reportError(p.current, "Syntax Error, expression not allowed.")
 			return
 		}
-		infix()
+		infix(p, canAssign)
+	}
+	if canAssign && p.Match(token.EQUAL) {
+		p.reportError(p.current, "Syntax Error, cannot assign on operator.")
 	}
 }
 
-func (p *Parser) Unary() {
+func Unary(p *Parser, canAssign bool) {
 	tknType := p.previous.Type
 
-	p.ParsePrec(PREC_UNARY)
+	p.parsePrec(PREC_UNARY)
 
 	switch tknType {
 	case token.MINUS:
@@ -109,10 +152,10 @@ func (p *Parser) Unary() {
 	}
 }
 
-func (p *Parser) Binary() {
+func Binary(p *Parser, canAssign bool) {
 	tknType := p.previous.Type
-	rule := p.getRule(tknType)
-	p.ParsePrec(rule.prec + 1)
+	rule := getRule(p, tknType)
+	p.parsePrec(rule.prec + 1)
 
 	switch tknType {
 	case token.PLUS:
@@ -165,16 +208,16 @@ func (p *Parser) makeConstant(v value.Value) uint {
 	return p.chk.AddVariable(v)
 }
 
-func (p *Parser) Number() {
+func Number(p *Parser, canAssign bool) {
 	dt := value.DetectNumberTypeByConversion(p.previous.Value)
 	p.emitConst(value.New(p.previous.Value, dt))
 }
 
-func (p *Parser) String() {
+func String(p *Parser, canAssign bool) {
 	p.emitConst(value.NewString(p.previous.Value))
 }
 
-func (p *Parser) Literal() {
+func Literal(p *Parser, canAssign bool) {
 	tokenType := p.previous.Type
 	switch tokenType {
 	case token.BOOL_FALSE:
@@ -188,13 +231,13 @@ func (p *Parser) Literal() {
 	}
 }
 
-func (p *Parser) Grouping() {
+func Grouping(p *Parser, assign bool) {
 	p.Expression()
 	p.Consume(token.CP, "Expected ')' after expression.")
 }
 
 func (p *Parser) Expression() {
-	p.ParsePrec(PREC_ASSIGN)
+	p.parsePrec(PREC_ASSIGN)
 }
 
 func (p *Parser) Match(tokenType token.TokenType) bool {
@@ -240,13 +283,19 @@ func (p *Parser) defineDeclVar(index uint) {
 	p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
 }
 
-func (p *Parser) Variable() {
-	p.definedVar(p.previous.Value)
+func Variable(p *Parser, canAssign bool) {
+	p.definedVar(p.previous.Value, canAssign)
 }
 
-func (p *Parser) definedVar(name string) {
-	idx := p.identifierConst(name)
-	p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, idx)
+func (p *Parser) definedVar(name string, canAssign bool) {
+	index := p.identifierConst(name)
+
+	if canAssign && p.Match(token.EQUAL) {
+		p.Expression()
+		p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
+	} else {
+		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
+	}
 }
 
 func (p *Parser) Statement() {
@@ -268,7 +317,7 @@ func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
 	// CP if only "print()"
 	if !p.Match(token.CP) {
-		p.Grouping()
+		Grouping(p, false)
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
@@ -302,44 +351,7 @@ func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
 		lex: lex,
 		chk: chk,
 	}
-	tknMap := map[token.TokenType]ParseRule{
-		token.OP:            {p.Grouping, nil, PREC_NONE},
-		token.CP:            {nil, nil, PREC_NONE},
-		token.LB:            {nil, nil, PREC_NONE},
-		token.RB:            {nil, nil, PREC_NONE},
-		token.COMMA:         {nil, nil, PREC_NONE},
-		token.DOT:           {nil, nil, PREC_NONE},
-		token.MINUS:         {p.Unary, p.Binary, PREC_TERM},
-		token.PLUS:          {nil, p.Binary, PREC_TERM},
-		token.SEMICOLON:     {nil, nil, PREC_NONE},
-		token.SLASH:         {nil, p.Binary, PREC_FACTOR},
-		token.STAR:          {nil, p.Binary, PREC_FACTOR},
-		token.EXCL:          {p.Unary, nil, PREC_TERM},
-		token.EXCL_EQUAL:    {nil, p.Binary, PREC_EQUALLITY},
-		token.EQUAL:         {nil, nil, PREC_NONE},
-		token.EQUAL_EQUAL:   {nil, p.Binary, PREC_COMPARE},
-		token.GREATER:       {nil, p.Binary, PREC_COMPARE},
-		token.GREATER_EQUAL: {nil, p.Binary, PREC_COMPARE},
-		token.LESS:          {nil, p.Binary, PREC_COMPARE},
-		token.LESS_EQUAL:    {nil, p.Binary, PREC_COMPARE},
-		token.STRING:        {p.String, nil, PREC_NONE},
-		token.NUMBER:        {p.Number, nil, PREC_NONE},
-		token.AND:           {nil, nil, PREC_NONE},
-		token.ELSE:          {nil, nil, PREC_NONE},
-		token.BOOL_FALSE:    {p.Literal, nil, PREC_NONE},
-		token.BOOL_TRUE:     {p.Literal, nil, PREC_NONE},
-		token.FOR:           {nil, nil, PREC_NONE},
-		token.FUNCTION:      {nil, nil, PREC_NONE},
-		token.IF:            {nil, nil, PREC_NONE},
-		token.OR:            {nil, nil, PREC_NONE},
-		token.NIL:           {p.Literal, nil, PREC_NONE},
-		token.PRINT:         {nil, nil, PREC_NONE},
-		token.RETURN:        {nil, nil, PREC_NONE},
-		token.IDENTIFIER:    {p.Variable, nil, PREC_NONE},
-		token.WHILE:         {nil, nil, PREC_NONE},
-		token.ERR:           {nil, nil, PREC_NONE},
-		token.EOF:           {nil, nil, PREC_NONE},
-	}
+	tknMap := tknMap
 	/*
 		Init MUST return a reference, otherwise
 		the functions would not point to the correct

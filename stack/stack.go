@@ -17,15 +17,13 @@ func (stack *Stack) Push(value value.Value) {
 	stack.Sarray[stack.Top] = value
 }
 
-func (stack *Stack) Pop() (value.Value, error) {
-	/*
-		if stack.Top == -1 {
-			return value.Value{}, errors.New("AA")
-		}
-	*/
+func (stack *Stack) Pop() value.Value {
+	if stack.Top == -1 {
+		return value.Value{}
+	}
 	_r := stack.Sarray[stack.Top]
 	stack.Top--
-	return _r, nil
+	return _r
 }
 
 func (stack *Stack) Peek(distance int) (value.Value, error) {

@@ -153,6 +153,8 @@ func (vm *VM) run() INTER_RESULT {
 			vm.vstack.Push(value.NewBool(true))
 		case codes.INSTRUC_FALSE:
 			vm.vstack.Push(value.NewBool(false))
+		case codes.INSTRUC_ERR:
+			return INTER_RUNTIME_ERROR
 		case codes.INSTRUC_NOT:
 			_v, err := vm.vstack.Peek(0)
 			if !value.IsBooleanType(_v.VT) || err != nil {
@@ -208,6 +210,12 @@ func (vm *VM) run() INTER_RESULT {
 			cnst := vm.ReadConstant()
 			declName := value.AsString(&cnst)
 			v, _ := vm.vstack.Peek(0)
+			/*
+				v, found := vm.globals._map[*declName]
+				if found {
+					fmt.Println("Variable already declared", *declName)
+				}
+			*/
 			vm.globals._map[*declName] = v
 		case codes.INSTRUC_GET_DECL_GLOBAL:
 			cnst := vm.ReadConstant()
