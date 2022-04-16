@@ -81,9 +81,11 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 	case codes.INSTRUC_POP:
 		return OpInstruction("INSTRUC_POP", offset)
 	case codes.INSTRUC_DECL_GLOBAL:
-		return OpInstruction("INSTRUC_DECL_GLOBAL", offset)
+		return PrintConstant("INSTRUC_DECL_GLOBAL", chunk, offset)
+	case codes.INSTRUC_SET_DECL_GLOBAL:
+		return PrintConstant("INSTRUC_SET_DECL_GLOBAL", chunk, offset)
 	case codes.INSTRUC_GET_DECL_GLOBAL:
-		return OpInstruction("INSTRUC_GET_DECL_GLOBAL", offset)
+		return PrintConstant("INSTRUC_GET_DECL_GLOBAL", chunk, offset)
 	}
 	// NOTE: should never reach!
 	return 0
