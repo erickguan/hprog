@@ -10,10 +10,11 @@ import (
 
 func BenchmarkVM(b *testing.B) {
 	var testCases = [...]string{
-		"./data/bool_op.hp",
-		"./data/print_op.hp",
-		"./data/sub_ops.hp",
-		"./data/string_ops.hp",
+		"./data_bench/bool_op.hp",
+		"./data_bench/print_op.hp",
+		"./data_bench/sub_ops.hp",
+		"./data_bench/string_ops.hp",
+		"./data_bench/decl_op.hp",
 	}
 	for _, inputFile := range testCases {
 		var buffer []string

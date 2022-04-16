@@ -237,10 +237,17 @@ func (p *Parser) definedVar(name string, canAssign bool) {
 	index := p.identifierConst(name)
 
 	if canAssign && p.Match(token.EQUAL) {
-		// NOTE: the variable needs to be declared first
+		/*
+			Needs to be a declared variable before
+			assigning.
+		*/
 		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
 		p.Expression()
-		p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
+		/*
+			DECL_GLOBAL -> initial declaration
+			DECL_SET_GLOBAL -> assign on declared variable
+		*/
+		p.emit2(codes.INSTRUC_SET_DECL_GLOBAL, index)
 	} else {
 		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
 	}
