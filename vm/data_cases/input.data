@@ -1,0 +1,3 @@
+"print(!@$!@)"
+"{ decl a = 1230 print(a) decl b = 123 print(b) }"
+"decl a b"

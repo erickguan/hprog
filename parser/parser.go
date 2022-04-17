@@ -28,13 +28,25 @@ const (
 	PREC_PRIMARY
 )
 
+type Compiler struct {
+	Locals     []Local
+	localCount int
+	scopeDepth int
+}
+
+type Local struct {
+	Name  token.Token
+	Depth int
+}
+
 type Parser struct {
-	current  *token.Token
-	previous *token.Token
-	lex      *lexer.Lexer
-	Perror   bool
-	ppanic   bool
-	tknMap   map[token.TokenType]ParseRule
+	current     *token.Token
+	previous    *token.Token
+	lex         *lexer.Lexer
+	Perror      bool
+	ppanic      bool
+	tknMap      map[token.TokenType]ParseRule
+	currentComp *Compiler
 
 	// todo
 	chk *chunk.Chunk
@@ -113,6 +125,7 @@ func (p *Parser) Consume(tknType token.TokenType, message string) {
 	p.reportError(p.current, message)
 }
 
+/*
 func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string) {
 	if p.current.Type == t1 || p.current.Type == t2 {
 		p.Advance()
@@ -121,6 +134,7 @@ func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string
 
 	p.reportError(p.current, message)
 }
+*/
 
 func (p *Parser) parsePrec(prec PREC) {
 	p.Advance()
@@ -167,6 +181,7 @@ func (p *Parser) Expression() {
 }
 
 func (p *Parser) Match(tokenType token.TokenType) bool {
+	// DEBUG
 	if !p.Check(tokenType) {
 		return false
 	}
@@ -192,7 +207,6 @@ func (p *Parser) declVar() {
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, malformed delcaration.")
 	p.defineDeclVar(index)
 }
 
@@ -254,17 +268,42 @@ func (p *Parser) definedVar(name string, canAssign bool) {
 }
 
 func (p *Parser) Statement() {
+	/*
+		statement -> exprRessionStmt
+					| printStmt
+					| block
+
+		block -> { delcare }
+	*/
 	if p.Match(token.PRINT) {
 		p.PrintStmt()
+	} else if p.Match(token.LB) {
+		p.beginDeclScope()
+		p.insideBlock()
+		p.endDeclScope()
 	} else {
 		p.ExpressionStmt()
 	}
 }
 
+func (p *Parser) beginDeclScope() {
+	p.currentComp.scopeDepth++
+}
+
+func (p *Parser) insideBlock() {
+	for !p.Check(token.RB) && !p.Check(token.EOF) {
+		p.Decl()
+		fmt.Println(p.current.Value)
+	}
+	p.Consume(token.RB, "No '}' at the end.")
+}
+
+func (p *Parser) endDeclScope() {
+	p.currentComp.scopeDepth--
+}
+
 func (p *Parser) ExpressionStmt() {
 	p.Expression()
-	// EOF | \n
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, Expression")
 	p.emit(codes.INSTRUC_POP)
 }
 
@@ -276,7 +315,6 @@ func (p *Parser) PrintStmt() {
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
-	p.Consume2(token.EOF, token.NEW_LINE, "SyntaxError, Expression")
 	p.emit(codes.INSTRUC_PRINT)
 }
 
@@ -355,12 +393,13 @@ func (p *Parser) reportError(tkn *token.Token, what string) {
 	p.Perror = true
 }
 
-func Init(lex *lexer.Lexer, chk *chunk.Chunk) *Parser {
+func Init(lex *lexer.Lexer, chk *chunk.Chunk, comp *Compiler) *Parser {
 	p := Parser{
 		lex: lex,
 		chk: chk,
 	}
 	p.tknMap = tknMap
+	p.currentComp = comp
 	/*
 		Init MUST return a reference, otherwise
 		the functions would not point to the correct
