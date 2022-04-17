@@ -148,6 +148,8 @@ func reverseMap(m map[string]TokenType) map[TokenType]string {
 	for k, v := range m {
 		n[v] = k
 	}
+	n[EOF] = "EOF"
+	n[NEW_LINE] = "NEW_LINE"
 	return n
 }
 

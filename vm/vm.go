@@ -13,6 +13,7 @@ import (
 )
 
 var MAX_STACK_SIZE = 256
+var MAX_LOCALS_SIZE = 256
 
 type INTER_RESULT int
 
@@ -39,6 +40,7 @@ type VM struct {
 	valueTypeMap map[OpKey]value.VALUE_TYPE
 	globals      LookupTable
 	strings      LookupTable
+	current      parser.Compiler
 }
 
 type LookupTable struct {
@@ -250,7 +252,8 @@ func (vm *VM) run() INTER_RESULT {
 
 func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	lex := lexer.Init(source)
-	p := parser.Init(lex, chk)
+	comp := parser.Compiler{Locals: make([]parser.Local, MAX_LOCALS_SIZE)}
+	p := parser.Init(lex, chk, &comp)
 
 	p.Advance()
 	for !p.Match(token.EOF) {
