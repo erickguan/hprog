@@ -11,11 +11,12 @@ import (
 )
 
 type Lexer struct {
-	input    string
-	position int
-	line     int
-	start    int
-	tokens   chan token.Token
+	input        string
+	position     int
+	line         int
+	start        int
+	tokens       chan token.Token
+	requiresSemi bool
 }
 
 type stateFunc func(*Lexer) stateFunc
@@ -50,9 +51,9 @@ func (lex *Lexer) peek() rune {
 	return ch
 }
 
-func (lex *Lexer) trimWhitespace() {
-	whitespace := " "
-	lex.acceptRun(whitespace)
+func (lex *Lexer) trim() {
+	_trim := " \n"
+	lex.acceptRun(_trim)
 	lex.start = lex.position
 }
 
@@ -194,17 +195,22 @@ func fullScan(lex *Lexer) stateFunc {
 				return nil
 			}
 			detectedType := lex.identifierToReseved(token.IDENTIFIER)
+			lex.requiresSemi = true
 			lex.emit(detectedType)
 		default:
 			switch ch {
 			case ' ':
-				lex.trimWhitespace()
+				lex.trim()
 			case '\n':
 				lex.line += 1
-				lex.emit(token.NEW_LINE)
+				if lex.requiresSemi {
+					lex.emit(token.SEMICOLON)
+				}
+				lex.trim()
+				lex.requiresSemi = false
 			case '#':
 				lex.skipComment()
-				lex.emit(token.COMMENT)
+				//lex.emit(token.COMMENT)
 			case '+':
 				lex.emit(token.PLUS)
 			case '-':
@@ -215,8 +221,10 @@ func fullScan(lex *Lexer) stateFunc {
 				lex.emit(token.STAR)
 			case '(':
 				lex.emit(token.OP)
+				lex.requiresSemi = false
 			case ')':
 				lex.emit(token.CP)
+				lex.requiresSemi = true
 			case '{':
 				lex.emit(token.LB)
 			case '}':
@@ -242,6 +250,11 @@ func fullScan(lex *Lexer) stateFunc {
 			case '=':
 				// TODO: is it a condition first
 				rtoken := lex.scanConditions(token.EQUAL, token.EQUAL_EQUAL)
+				/*
+					if rtoken == token.EQUAL {
+						lex.requiresSemi = true
+					}
+				*/
 				lex.emit(rtoken)
 			case '<':
 				// TODO: is it a condition first
@@ -265,6 +278,7 @@ func fullScan(lex *Lexer) stateFunc {
 				}
 			case token.EoF:
 				lex.emit(token.EOF)
+				return nil
 			default:
 				lex.emit(token.ERR)
 				lex.reportError("Token not recognized.")

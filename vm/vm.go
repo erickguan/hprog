@@ -237,11 +237,10 @@ func (vm *VM) run() INTER_RESULT {
 			value.PrintValue(vm.vstack.Pop())
 			fmt.Printf("\n")
 		case codes.INSTRUC_POP:
-			peek, err := vm.vstack.Peek(0)
-			if err == nil {
-				vm.vstack.Pop()
-				value.PrintValue(peek)
-			}
+			peek, _ := vm.vstack.Peek(0)
+			// BUG: nil nil nil on new line
+			vm.vstack.Pop()
+			value.PrintValue(peek)
 			fmt.Printf("\n")
 		case codes.INSTRUC_RETURN:
 			return INTER_OK

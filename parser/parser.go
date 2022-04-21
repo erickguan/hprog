@@ -53,7 +53,7 @@ type Parser struct {
 }
 
 var tknMap = map[token.TokenType]ParseRule{
-	token.OP:            {Grouping, nil, PREC_NONE},
+	token.OP:            {Grouping, fcall, PREC_CALL},
 	token.CP:            {nil, nil, PREC_NONE},
 	token.LB:            {nil, nil, PREC_NONE},
 	token.RB:            {nil, nil, PREC_NONE},
@@ -81,14 +81,15 @@ var tknMap = map[token.TokenType]ParseRule{
 	token.FOR:           {nil, nil, PREC_NONE},
 	token.FUNCTION:      {nil, nil, PREC_NONE},
 	token.IF:            {nil, nil, PREC_NONE},
-	token.OR:            {nil, nil, PREC_NONE},
-	token.NIL:           {Literal, nil, PREC_NONE},
-	token.PRINT:         {nil, nil, PREC_NONE},
-	token.RETURN:        {nil, nil, PREC_NONE},
-	token.IDENTIFIER:    {Variable, nil, PREC_NONE},
-	token.WHILE:         {nil, nil, PREC_NONE},
-	token.ERR:           {nil, nil, PREC_NONE},
-	token.EOF:           {nil, nil, PREC_NONE},
+	// maybe not
+	token.OR:         {nil, nil, PREC_NONE},
+	token.NIL:        {Literal, nil, PREC_NONE},
+	token.PRINT:      {nil, nil, PREC_NONE},
+	token.RETURN:     {nil, nil, PREC_NONE},
+	token.IDENTIFIER: {Variable, nil, PREC_NONE},
+	token.WHILE:      {nil, nil, PREC_NONE},
+	token.ERR:        {nil, nil, PREC_NONE},
+	token.EOF:        {nil, nil, PREC_NONE},
 }
 
 type ParseFn func(*Parser, bool)
@@ -113,7 +114,11 @@ func (p *Parser) EndCompile() {
 }
 
 func (p *Parser) getRule(tknType token.TokenType) ParseRule {
-	return p.tknMap[tknType]
+	rule, found := p.tknMap[tknType]
+	if found == false {
+		p.reportError(p.current, "Expression not supported")
+	}
+	return rule
 }
 
 func (p *Parser) Consume(tknType token.TokenType, message string) {
@@ -125,40 +130,25 @@ func (p *Parser) Consume(tknType token.TokenType, message string) {
 	p.reportError(p.current, message)
 }
 
-/*
-func (p *Parser) Consume2(t1 token.TokenType, t2 token.TokenType, message string) {
-	if p.current.Type == t1 || p.current.Type == t2 {
-		p.Advance()
-		return
-	}
-
-	p.reportError(p.current, message)
-}
-*/
-
 func (p *Parser) parsePrec(prec PREC) {
 	p.Advance()
-	prefRule := p.getRule(p.previous.Type).prefix
-	if prefRule == nil {
+
+	prefix := p.getRule(p.previous.Type).prefix
+	if prefix == nil {
+		p.reportError(p.previous, "Expression "+token.ReversedTokenMap[p.previous.Type]+" not supported.")
 		return
 	}
 
 	canAssign := prec <= PREC_ASSIGN
-	prefRule(p, canAssign)
+	prefix(p, canAssign)
 
-	for {
-		prec1 := p.getRule(p.current.Type).prec
-		if prec >= prec1 {
-			break
-		}
+	for prec <= p.getRule(p.current.Type).prec {
 		p.Advance()
 		infix := p.getRule(p.previous.Type).infix
-		if infix == nil {
-			p.reportError(p.current, "Syntax Error, expression not allowed.")
-			return
-		}
+		//	fmt.Println("infix", runtime.FuncForPC(reflect.ValueOf(infix).Pointer()).Name())
 		infix(p, canAssign)
 	}
+
 	if canAssign && p.Match(token.EQUAL) {
 		p.reportError(p.current, "Syntax Error, cannot assign on operator.")
 	}
@@ -180,6 +170,10 @@ func (p *Parser) Expression() {
 	p.parsePrec(PREC_ASSIGN)
 }
 
+func fcall(p *Parser, canAssign bool) {
+	//fmt.Println(
+}
+
 func (p *Parser) Match(tokenType token.TokenType) bool {
 	// DEBUG
 	if !p.Check(tokenType) {
@@ -195,9 +189,9 @@ func (p *Parser) Decl() {
 	} else {
 		p.Statement()
 	}
-	if p.ppanic {
+	// if p.ppanic {
 
-	}
+	// }
 }
 
 func (p *Parser) declVar() {
@@ -207,6 +201,7 @@ func (p *Parser) declVar() {
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
+	p.Consume(token.SEMICOLON, "Malformed variable declaration.")
 	p.defineDeclVar(index)
 }
 
@@ -250,6 +245,7 @@ func Variable(p *Parser, canAssign bool) {
 func (p *Parser) definedVar(name string, canAssign bool) {
 	index := p.identifierConst(name)
 
+	fmt.Println("previous:", token.ReversedTokenMap[p.previous.Type])
 	if canAssign && p.Match(token.EQUAL) {
 		/*
 			Needs to be a declared variable before
@@ -275,7 +271,9 @@ func (p *Parser) Statement() {
 
 		block -> { delcare }
 	*/
+	fmt.Println("BB Value:", token.ReversedTokenMap[p.current.Type])
 	if p.Match(token.PRINT) {
+		fmt.Println("print")
 		p.PrintStmt()
 	} else if p.Match(token.LB) {
 		p.beginDeclScope()
@@ -293,7 +291,6 @@ func (p *Parser) beginDeclScope() {
 func (p *Parser) insideBlock() {
 	for !p.Check(token.RB) && !p.Check(token.EOF) {
 		p.Decl()
-		fmt.Println(p.current.Value)
 	}
 	p.Consume(token.RB, "No '}' at the end.")
 }
@@ -303,18 +300,24 @@ func (p *Parser) endDeclScope() {
 }
 
 func (p *Parser) ExpressionStmt() {
+	// variable has it
 	p.Expression()
+	fmt.Println("AA")
+	p.Consume(token.SEMICOLON, "Malformed expression statement.")
 	p.emit(codes.INSTRUC_POP)
 }
 
 func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
-	// CP if only "print()"
+
 	if !p.Match(token.CP) {
+		fmt.Println("Grouping")
 		Grouping(p, false)
 	} else {
+		// CP if only "print()"
 		p.emit(codes.INSTRUC_NIL)
 	}
+	p.Consume(token.SEMICOLON, "Malformed print statement.")
 	p.emit(codes.INSTRUC_PRINT)
 }
 
@@ -324,11 +327,16 @@ func (p *Parser) Check(tokenType token.TokenType) bool {
 
 func (p *Parser) Advance() {
 	p.previous = p.current
-
 	tkn, done := p.lex.Consume()
+
 	if done {
+		fmt.Println("done")
 		return
 	}
+	if tkn.Type == token.ERR {
+		p.reportError(p.current, "Error lexer.")
+	}
+
 	p.current = tkn
 }
 
@@ -387,10 +395,21 @@ func Literal(p *Parser, canAssign bool) {
 }
 
 func (p *Parser) reportError(tkn *token.Token, what string) {
-	p.ppanic = true
-	fmt.Fprintf(os.Stderr, "[line:%d, pos:%d] Error, %s\n",
-		tkn.Line, tkn.Position, what)
+	if p.ppanic {
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "[line:%d, pos:%d] Error %s, %s\n",
+		tkn.Line, tkn.Position, token.ReversedTokenMap[tkn.Type], what)
+
 	p.Perror = true
+	p.ppanic = true
+
+	/*
+		for !p.Match(token.EOF) {
+			p.Advance()
+		}
+	*/
 }
 
 func Init(lex *lexer.Lexer, chk *chunk.Chunk, comp *Compiler) *Parser {
