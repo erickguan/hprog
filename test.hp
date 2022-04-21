@@ -1,4 +1,5 @@
 decl a = (True == False)
+print(a)
 
 
 
@@ -6,12 +7,20 @@ decl a = (True == False)
 {
 
 decl b = 1231
-print(
 
 
 
-
-
-a)
-
+print(b)
 }
+
+decl h = 123
+a = 123
+a = (True == False)
+print( (1 == 1))
+print()
+
+print("" == "")
+
+#print(b ="AAA")
+print(a=b)
+print(a)

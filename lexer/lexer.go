@@ -67,7 +67,7 @@ func (lex *Lexer) Consume() (*token.Token, bool) {
 
 func (lex *Lexer) skipComment() {
 	for {
-		ch := lex.read()
+		ch := lex.peek()
 		if ch == '\n' || ch == token.EoF {
 			break
 		} else {
@@ -203,14 +203,13 @@ func fullScan(lex *Lexer) stateFunc {
 				lex.trim()
 			case '\n':
 				lex.line += 1
-				if lex.requiresSemi {
+				if lex.requiresSemi == true {
 					lex.emit(token.SEMICOLON)
 				}
 				lex.trim()
 				lex.requiresSemi = false
 			case '#':
 				lex.skipComment()
-				//lex.emit(token.COMMENT)
 			case '+':
 				lex.emit(token.PLUS)
 			case '-':
@@ -250,11 +249,6 @@ func fullScan(lex *Lexer) stateFunc {
 			case '=':
 				// TODO: is it a condition first
 				rtoken := lex.scanConditions(token.EQUAL, token.EQUAL_EQUAL)
-				/*
-					if rtoken == token.EQUAL {
-						lex.requiresSemi = true
-					}
-				*/
 				lex.emit(rtoken)
 			case '<':
 				// TODO: is it a condition first

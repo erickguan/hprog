@@ -130,7 +130,7 @@ func (p *Parser) Consume(tknType token.TokenType, message string) {
 	p.reportError(p.current, message)
 }
 
-func (p *Parser) parsePrec(prec PREC) {
+func (p *Parser) parsePrec(prec PREC, assign bool) {
 	p.Advance()
 
 	prefix := p.getRule(p.previous.Type).prefix
@@ -140,12 +140,11 @@ func (p *Parser) parsePrec(prec PREC) {
 	}
 
 	canAssign := prec <= PREC_ASSIGN
-	prefix(p, canAssign)
+	prefix(p, canAssign && assign)
 
 	for prec <= p.getRule(p.current.Type).prec {
 		p.Advance()
 		infix := p.getRule(p.previous.Type).infix
-		//	fmt.Println("infix", runtime.FuncForPC(reflect.ValueOf(infix).Pointer()).Name())
 		infix(p, canAssign)
 	}
 
@@ -166,12 +165,11 @@ func (p *Parser) makeConstant(v value.Value) uint {
 	return p.chk.AddVariable(v)
 }
 
-func (p *Parser) Expression() {
-	p.parsePrec(PREC_ASSIGN)
+func (p *Parser) Expression(assign bool) {
+	p.parsePrec(PREC_ASSIGN, assign)
 }
 
 func fcall(p *Parser, canAssign bool) {
-	//fmt.Println(
 }
 
 func (p *Parser) Match(tokenType token.TokenType) bool {
@@ -197,7 +195,7 @@ func (p *Parser) Decl() {
 func (p *Parser) declVar() {
 	index := p.parseVar("Expected identifier Name.")
 	if p.Match(token.EQUAL) {
-		p.Expression()
+		p.Expression(true)
 	} else {
 		p.emit(codes.INSTRUC_NIL)
 	}
@@ -221,7 +219,7 @@ func (p *Parser) defineDeclVar(index uint) {
 func Unary(p *Parser, canAssign bool) {
 	tknType := p.previous.Type
 
-	p.parsePrec(PREC_UNARY)
+	p.parsePrec(PREC_UNARY, canAssign)
 
 	switch tknType {
 	case token.MINUS:
@@ -234,7 +232,7 @@ func Unary(p *Parser, canAssign bool) {
 }
 
 func Grouping(p *Parser, assign bool) {
-	p.Expression()
+	p.Expression(assign)
 	p.Consume(token.CP, "Expected ')' after expression.")
 }
 
@@ -245,14 +243,13 @@ func Variable(p *Parser, canAssign bool) {
 func (p *Parser) definedVar(name string, canAssign bool) {
 	index := p.identifierConst(name)
 
-	fmt.Println("previous:", token.ReversedTokenMap[p.previous.Type])
 	if canAssign && p.Match(token.EQUAL) {
 		/*
 			Needs to be a declared variable before
 			assigning.
 		*/
 		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
-		p.Expression()
+		p.Expression(canAssign)
 		/*
 			DECL_GLOBAL -> initial declaration
 			DECL_SET_GLOBAL -> assign on declared variable
@@ -271,9 +268,7 @@ func (p *Parser) Statement() {
 
 		block -> { delcare }
 	*/
-	fmt.Println("BB Value:", token.ReversedTokenMap[p.current.Type])
 	if p.Match(token.PRINT) {
-		fmt.Println("print")
 		p.PrintStmt()
 	} else if p.Match(token.LB) {
 		p.beginDeclScope()
@@ -301,8 +296,7 @@ func (p *Parser) endDeclScope() {
 
 func (p *Parser) ExpressionStmt() {
 	// variable has it
-	p.Expression()
-	fmt.Println("AA")
+	p.Expression(true)
 	p.Consume(token.SEMICOLON, "Malformed expression statement.")
 	p.emit(codes.INSTRUC_POP)
 }
@@ -311,7 +305,6 @@ func (p *Parser) PrintStmt() {
 	p.Consume(token.OP, "Expected '(' after expression.")
 
 	if !p.Match(token.CP) {
-		fmt.Println("Grouping")
 		Grouping(p, false)
 	} else {
 		// CP if only "print()"
@@ -343,7 +336,7 @@ func (p *Parser) Advance() {
 func Binary(p *Parser, canAssign bool) {
 	tknType := p.previous.Type
 	rule := p.getRule(tknType)
-	p.parsePrec(rule.prec + 1)
+	p.parsePrec(rule.prec+1, canAssign)
 
 	switch tknType {
 	case token.PLUS:

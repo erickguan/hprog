@@ -37,7 +37,7 @@ func loadFile(inputFile string) {
 			fmt.Println("DONE scan")
 			break
 		}
-		fmt.Println("lexer:", token.ReversedTokenMap[a.Type])
+		//fmt.Println("lexer:", token.ReversedTokenMap[a.Type])
 	}
 	status := v.Interpret(string(f))
 	if status == vm.INTER_RUNTIME_ERROR {
