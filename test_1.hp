@@ -18,3 +18,5 @@ a
 
 )
 print(a = "")
+
+#print(b ="AAA")

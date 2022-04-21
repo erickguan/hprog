@@ -22,5 +22,5 @@ print()
 print("" == "")
 
 #print(b ="AAA")
-print(a=b)
+print(   a=a)
 print(a)

@@ -51,8 +51,19 @@ func (lex *Lexer) peek() rune {
 	return ch
 }
 
-func (lex *Lexer) trim() {
-	_trim := " \n"
+func (lex *Lexer) setRequiresSemi(required bool) {
+	fmt.Println(required)
+	lex.requiresSemi = required
+}
+
+func (lex *Lexer) trimWhitespace() {
+	_trim := " "
+	lex.acceptRun(_trim)
+	lex.start = lex.position
+}
+
+func (lex *Lexer) trimNewline() {
+	_trim := "\n"
 	lex.acceptRun(_trim)
 	lex.start = lex.position
 }
@@ -195,35 +206,40 @@ func fullScan(lex *Lexer) stateFunc {
 				return nil
 			}
 			detectedType := lex.identifierToReseved(token.IDENTIFIER)
-			lex.requiresSemi = true
+			lex.setRequiresSemi(true)
 			lex.emit(detectedType)
 		default:
 			switch ch {
 			case ' ':
-				lex.trim()
+				lex.trimWhitespace()
 			case '\n':
 				lex.line += 1
 				if lex.requiresSemi == true {
+					fmt.Println("AAA")
 					lex.emit(token.SEMICOLON)
 				}
-				lex.trim()
-				lex.requiresSemi = false
+				lex.trimNewline()
+				lex.setRequiresSemi(false)
 			case '#':
 				lex.skipComment()
 			case '+':
 				lex.emit(token.PLUS)
+				lex.setRequiresSemi(true)
 			case '-':
 				lex.emit(token.MINUS)
+				lex.setRequiresSemi(true)
 			case '/':
 				lex.emit(token.SLASH)
+				lex.setRequiresSemi(true)
 			case '*':
 				lex.emit(token.STAR)
+				lex.setRequiresSemi(true)
 			case '(':
 				lex.emit(token.OP)
-				lex.requiresSemi = false
+				lex.setRequiresSemi(false)
 			case ')':
 				lex.emit(token.CP)
-				lex.requiresSemi = true
+				lex.setRequiresSemi(true)
 			case '{':
 				lex.emit(token.LB)
 			case '}':
@@ -239,7 +255,8 @@ func fullScan(lex *Lexer) stateFunc {
 				}
 				lex.emit(token.NUMBER)
 			case ';':
-				lex.emit(token.SEMICOLON)
+				// TODO: is it needed?
+				// lex.emit(token.SEMICOLON)
 			case ':':
 				lex.emit(token.COLON)
 			case '!':
