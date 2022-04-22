@@ -135,7 +135,8 @@ func (p *Parser) parsePrec(prec PREC, assign bool) {
 
 	prefix := p.getRule(p.previous.Type).prefix
 	if prefix == nil {
-		p.reportError(p.previous, "Expression "+token.ReversedTokenMap[p.previous.Type]+" not supported.")
+		// p.reportError(p.previous, "Expression "+token.ReversedTokenMap[p.previous.Type]+" not supported.")
+		p.reportError(p.previous, "Expression prefix not supported.")
 		return
 	}
 
@@ -149,7 +150,7 @@ func (p *Parser) parsePrec(prec PREC, assign bool) {
 	}
 
 	if canAssign && p.Match(token.EQUAL) {
-		p.reportError(p.current, "Syntax Error, cannot assign on operator.")
+		p.reportError(p.current, "Cannot assign on operator.")
 	}
 }
 
@@ -193,7 +194,7 @@ func (p *Parser) Decl() {
 }
 
 func (p *Parser) declVar() {
-	index := p.parseVar("Expected identifier Name.")
+	index := p.parseVar("Expected variable Name.")
 	if p.Match(token.EQUAL) {
 		p.Expression(true)
 	} else {
@@ -287,7 +288,7 @@ func (p *Parser) insideBlock() {
 	for !p.Check(token.RB) && !p.Check(token.EOF) {
 		p.Decl()
 	}
-	p.Consume(token.RB, "No '}' at the end.")
+	p.Consume(token.RB, "Missing '}' after expression.")
 }
 
 func (p *Parser) endDeclScope() {
@@ -297,7 +298,7 @@ func (p *Parser) endDeclScope() {
 func (p *Parser) ExpressionStmt() {
 	// variable has it
 	p.Expression(true)
-	p.Consume(token.SEMICOLON, "Malformed expression statement.")
+	p.Consume(token.SEMICOLON, "Malformed expression.")
 	p.emit(codes.INSTRUC_POP)
 }
 
