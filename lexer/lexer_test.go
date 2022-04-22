@@ -61,7 +61,8 @@ func TestLexerExpression(t *testing.T) {
 		"if":                             []token.TokenType{token.IF},
 		"False == True":                  []token.TokenType{token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE},
 		"(False == True)":                []token.TokenType{token.OP, token.BOOL_FALSE, token.EQUAL_EQUAL, token.BOOL_TRUE, token.CP},
-		"decl b = 10; # (if equal True)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER, token.SEMICOLON, token.COMMENT},
+		"decl b = 10; # (if equal True)": []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL, token.NUMBER},
+		"decl a == 123":                  []token.TokenType{token.DECLARE, token.IDENTIFIER, token.EQUAL_EQUAL, token.NUMBER},
 	}
 	evaluateExpression(t, caseMap)
 }

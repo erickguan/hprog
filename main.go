@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/badc0re/hprog/lexer"
+	"github.com/badc0re/hprog/token"
 	"github.com/badc0re/hprog/vm"
 )
 
@@ -21,20 +24,29 @@ func loadFile(inputFile string) {
 		return
 	}
 
+	fmt.Printf(strings.ReplaceAll(string(f), "\n", "\\n"))
+	fmt.Println()
+
 	v := vm.VM{}
 	v.InitVM()
+	lex := lexer.Init(string(f))
+	for {
+		tkn, _ := lex.Consume()
+		a := *tkn
+		if a.Type == token.EOF {
+			fmt.Println("DONE scan")
+			break
+		}
+		fmt.Println("lexer:", token.ReversedTokenMap[a.Type])
+	}
 	status := v.Interpret(string(f))
 	if status == vm.INTER_RUNTIME_ERROR {
 		fmt.Println("Runtime error.")
 	}
 }
 
-func OnNewLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	return bufio.ScanLines(data, atEOF)
-}
-
 func main() {
-	var buffer []string
+	//var buffer []string
 	var inputFile string
 
 	flag.StringVar(&inputFile, "file", "", "Input hprog file.")
@@ -45,32 +57,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	const idet = "hprog> "
+	const indet = "hprog> "
 	fmt.Println("Hprog Version 0.01")
 	fmt.Println("One way to escape, ctr-c to exit.")
 
 	// INPUT SCANNER
 	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(OnNewLine)
 
 	// INIT VM
 	v := vm.VM{}
 	v.InitVM()
 
 	// readlines and process
-	for readline(idet, scanner) {
-		var sline = scanner.Text()
+	for readline(indet, scanner) {
+		line := scanner.Text()
+
+		fmt.Printf("%s\n", strings.ReplaceAll(string(line), "\n", "\\n"))
+
+		// TODO: will fix newline later
+		status := v.Interpret(line + "\n")
+		lex := lexer.Init(string(line) + "\n")
+		for {
+			tkn, _ := lex.Consume()
+			a := *tkn
+			if a.Type == token.EOF {
+				fmt.Println("DONE scan")
+				break
+			}
+			fmt.Println("lexer:", token.ReversedTokenMap[a.Type])
+		}
+		if status != vm.INTER_OK {
+			fmt.Println("Runtime error.")
+		}
 
 		if scanner.Err() != nil {
 			fmt.Printf("error: %s\n", scanner.Err())
-		}
-
-		if len(sline) > 0 {
-			status := v.Interpret(sline)
-			if status != vm.INTER_OK {
-				fmt.Println("Runtime error.")
-			}
-			buffer = append(buffer, sline)
 		}
 	}
 

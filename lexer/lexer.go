@@ -11,11 +11,12 @@ import (
 )
 
 type Lexer struct {
-	input    string
-	position int
-	line     int
-	start    int
-	tokens   chan token.Token
+	input        string
+	position     int
+	line         int
+	start        int
+	tokens       chan token.Token
+	requiresSemi bool
 }
 
 type stateFunc func(*Lexer) stateFunc
@@ -50,9 +51,20 @@ func (lex *Lexer) peek() rune {
 	return ch
 }
 
+func (lex *Lexer) setRequiresSemi(required bool) {
+	fmt.Println(required)
+	lex.requiresSemi = required
+}
+
 func (lex *Lexer) trimWhitespace() {
-	whitespace := " "
-	lex.acceptRun(whitespace)
+	_trim := " "
+	lex.acceptRun(_trim)
+	lex.start = lex.position
+}
+
+func (lex *Lexer) trimNewline() {
+	_trim := "\n"
+	lex.acceptRun(_trim)
 	lex.start = lex.position
 }
 
@@ -66,7 +78,7 @@ func (lex *Lexer) Consume() (*token.Token, bool) {
 
 func (lex *Lexer) skipComment() {
 	for {
-		ch := lex.read()
+		ch := lex.peek()
 		if ch == '\n' || ch == token.EoF {
 			break
 		} else {
@@ -194,6 +206,7 @@ func fullScan(lex *Lexer) stateFunc {
 				return nil
 			}
 			detectedType := lex.identifierToReseved(token.IDENTIFIER)
+			lex.setRequiresSemi(true)
 			lex.emit(detectedType)
 		default:
 			switch ch {
@@ -201,22 +214,32 @@ func fullScan(lex *Lexer) stateFunc {
 				lex.trimWhitespace()
 			case '\n':
 				lex.line += 1
-				lex.emit(token.NEW_LINE)
+				if lex.requiresSemi == true {
+					fmt.Println("AAA")
+					lex.emit(token.SEMICOLON)
+				}
+				lex.trimNewline()
+				lex.setRequiresSemi(false)
 			case '#':
 				lex.skipComment()
-				lex.emit(token.COMMENT)
 			case '+':
 				lex.emit(token.PLUS)
+				lex.setRequiresSemi(true)
 			case '-':
 				lex.emit(token.MINUS)
+				lex.setRequiresSemi(true)
 			case '/':
 				lex.emit(token.SLASH)
+				lex.setRequiresSemi(true)
 			case '*':
 				lex.emit(token.STAR)
+				lex.setRequiresSemi(true)
 			case '(':
 				lex.emit(token.OP)
+				lex.setRequiresSemi(false)
 			case ')':
 				lex.emit(token.CP)
+				lex.setRequiresSemi(true)
 			case '{':
 				lex.emit(token.LB)
 			case '}':
@@ -232,7 +255,8 @@ func fullScan(lex *Lexer) stateFunc {
 				}
 				lex.emit(token.NUMBER)
 			case ';':
-				lex.emit(token.SEMICOLON)
+				// TODO: is it needed?
+				// lex.emit(token.SEMICOLON)
 			case ':':
 				lex.emit(token.COLON)
 			case '!':
@@ -265,6 +289,7 @@ func fullScan(lex *Lexer) stateFunc {
 				}
 			case token.EoF:
 				lex.emit(token.EOF)
+				return nil
 			default:
 				lex.emit(token.ERR)
 				lex.reportError("Token not recognized.")

@@ -138,7 +138,7 @@ var TokenMap = map[string]TokenType{
 	// for debugging
 	"ERROR": ERR,
 	"\\0":   EOF,
-	"\\n":   NEW_LINE,
+	"\n":    NEW_LINE,
 }
 
 var ReversedTokenMap = reverseMap(TokenMap)
