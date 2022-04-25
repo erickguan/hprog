@@ -29,9 +29,9 @@ const (
 )
 
 type Compiler struct {
-	Locals     []Local
-	localCount int
-	scopeDepth int
+	Locals     []*Local
+	LocalCount int
+	ScopeDepth int
 }
 
 type Local struct {
@@ -53,7 +53,7 @@ type Parser struct {
 }
 
 var tknMap = map[token.TokenType]ParseRule{
-	token.OP:            {Grouping, fcall, PREC_CALL},
+	token.OP:            {Grouping, nil, PREC_CALL},
 	token.CP:            {nil, nil, PREC_NONE},
 	token.LB:            {nil, nil, PREC_NONE},
 	token.RB:            {nil, nil, PREC_NONE},
@@ -88,6 +88,7 @@ var tknMap = map[token.TokenType]ParseRule{
 	token.RETURN:     {nil, nil, PREC_NONE},
 	token.IDENTIFIER: {Variable, nil, PREC_NONE},
 	token.WHILE:      {nil, nil, PREC_NONE},
+	token.DECLARE:    {nil, nil, PREC_NONE},
 	token.ERR:        {nil, nil, PREC_NONE},
 	token.EOF:        {nil, nil, PREC_NONE},
 }
@@ -170,9 +171,6 @@ func (p *Parser) Expression(assign bool) {
 	p.parsePrec(PREC_ASSIGN, assign)
 }
 
-func fcall(p *Parser, canAssign bool) {
-}
-
 func (p *Parser) Match(tokenType token.TokenType) bool {
 	// DEBUG
 	if !p.Check(tokenType) {
@@ -184,7 +182,7 @@ func (p *Parser) Match(tokenType token.TokenType) bool {
 
 func (p *Parser) Decl() {
 	if p.Match(token.DECLARE) {
-		p.declVar()
+		p.declVarStmt()
 	} else {
 		p.Statement()
 	}
@@ -193,7 +191,7 @@ func (p *Parser) Decl() {
 	// }
 }
 
-func (p *Parser) declVar() {
+func (p *Parser) declVarStmt() {
 	index := p.parseVar("Expected variable Name.")
 	if p.Match(token.EQUAL) {
 		p.Expression(true)
@@ -204,16 +202,58 @@ func (p *Parser) declVar() {
 	p.defineDeclVar(index)
 }
 
-func (p *Parser) parseVar(msg string) (index uint) {
-	p.Consume(token.IDENTIFIER, msg)
-	return p.identifierConst(p.previous.Value)
+func (p *Parser) declVar() {
+	if p.currentComp.ScopeDepth == 0 {
+		return
+	}
+	ptoken := p.previous
+
+	for idx := p.currentComp.LocalCount - 1; idx >= 0; idx-- {
+		local := p.currentComp.Locals[idx]
+		if local.Depth != -1 && local.Depth < p.currentComp.ScopeDepth {
+			break
+		}
+		if ptoken.Value == local.Name.Value {
+			p.reportError(p.current, "Already declared.")
+		}
+	}
+	p.addScopedVar(*ptoken)
 }
 
-func (p *Parser) identifierConst(name string) (index uint) {
-	return p.makeConstant(value.NewString(name))
+func (p *Parser) addScopedVar(token token.Token) {
+	p.currentComp.Locals[p.currentComp.LocalCount] = &Local{
+		Name:  token,
+		Depth: -1,
+	}
+	p.currentComp.LocalCount++
+}
+
+func (p *Parser) markInitialized() {
+	p.currentComp.Locals[p.currentComp.LocalCount-1].Depth = p.currentComp.ScopeDepth
+}
+
+func (p *Parser) parseVar(msg string) (index uint) {
+	p.Consume(token.IDENTIFIER, msg)
+
+	p.declVar()
+
+	if p.currentComp.ScopeDepth > 0 {
+		return 0
+	}
+
+	return p.identifierConst(p.previous)
+}
+
+func (p *Parser) identifierConst(ptoken *token.Token) (index uint) {
+	return p.makeConstant(value.NewString(ptoken.Value))
 }
 
 func (p *Parser) defineDeclVar(index uint) {
+	if p.currentComp.ScopeDepth > 0 {
+		p.markInitialized()
+		return
+	}
+	// skip instruc about global decl
 	p.emit2(codes.INSTRUC_DECL_GLOBAL, index)
 }
 
@@ -238,26 +278,54 @@ func Grouping(p *Parser, assign bool) {
 }
 
 func Variable(p *Parser, canAssign bool) {
-	p.definedVar(p.previous.Value, canAssign)
+	p.definedVar(p.previous, canAssign)
 }
 
-func (p *Parser) definedVar(name string, canAssign bool) {
-	index := p.identifierConst(name)
+func (p *Parser) resolveLocal(ptoken *token.Token) (uint, bool) {
+	for i := p.currentComp.LocalCount - 1; i >= 0; i-- {
+		local := p.currentComp.Locals[i]
+
+		if local == nil {
+			p.reportError(p.current, "Panic, local variable not defined.")
+		}
+
+		if ptoken.Value == local.Name.Value {
+			if local.Depth == -1 {
+				p.reportError(p.current, "Cannot use using variable while initializing.")
+			}
+			return uint(i), true
+		}
+	}
+	return 0, false
+}
+
+func (p *Parser) definedVar(ptoken *token.Token, canAssign bool) {
+	index, found := p.resolveLocal(ptoken)
+
+	getCode := codes.INSTRUC_GET_DECL_GLOBAL
+	setCode := codes.INSTRUC_SET_DECL_GLOBAL
+
+	if found {
+		getCode = codes.INSTRUC_GET_DECL_LOCAL
+		setCode = codes.INSTRUC_SET_DECL_LOCAL
+	} else {
+		index = p.identifierConst(ptoken)
+	}
 
 	if canAssign && p.Match(token.EQUAL) {
 		/*
 			Needs to be a declared variable before
 			assigning.
 		*/
-		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
+		p.emit2(getCode, index)
 		p.Expression(canAssign)
 		/*
 			DECL_GLOBAL -> initial declaration
 			DECL_SET_GLOBAL -> assign on declared variable
 		*/
-		p.emit2(codes.INSTRUC_SET_DECL_GLOBAL, index)
+		p.emit2(setCode, index)
 	} else {
-		p.emit2(codes.INSTRUC_GET_DECL_GLOBAL, index)
+		p.emit2(getCode, index)
 	}
 }
 
@@ -281,7 +349,7 @@ func (p *Parser) Statement() {
 }
 
 func (p *Parser) beginDeclScope() {
-	p.currentComp.scopeDepth++
+	p.currentComp.ScopeDepth++
 }
 
 func (p *Parser) insideBlock() {
@@ -292,7 +360,12 @@ func (p *Parser) insideBlock() {
 }
 
 func (p *Parser) endDeclScope() {
-	p.currentComp.scopeDepth--
+	p.currentComp.ScopeDepth--
+
+	for p.currentComp.LocalCount > 0 && p.currentComp.Locals[p.currentComp.LocalCount-1].Depth > p.currentComp.ScopeDepth {
+		p.emit(codes.INSTRUC_POP)
+		p.currentComp.LocalCount--
+	}
 }
 
 func (p *Parser) ExpressionStmt() {
@@ -324,7 +397,6 @@ func (p *Parser) Advance() {
 	tkn, done := p.lex.Consume()
 
 	if done {
-		fmt.Println("done")
 		return
 	}
 	if tkn.Type == token.ERR {
