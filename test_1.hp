@@ -1,22 +1,8 @@
 decl a = 123
 a = 123
 a = (True == False)
-print(
+print( (1 == 1))
 
-(1 == 1)
-
-)
-
-print(
-
-
-
-
-
-a
-
-
-)
-print(a = "")
+print( a) 
 
 #print(b ="AAA")

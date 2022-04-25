@@ -1,7 +1,6 @@
 # HProg (Hel programming language)
 
-Dynamically-typed programming language with the scope of providing functionallity
-of processing data by using the internal goroutines.
+Dynamically-typed programming language.
 
 ## Sample VM Instructions
 
@@ -34,23 +33,9 @@ decl c = 10
 ## Functions
 
 ```
-fn testVariable() {
-    return a < c ? true : false
-} (bool)
+fn (bool) testVariable() = return a < c ? true : false
 
-fn testVariable() =  {
-    a < c ? true : false
-} (bool)
-
-fn cncr testVariable() =  {
-    a < c ? true : false
-} (bool)
-
-b = testVariable()
-
-fn populateArray(startRange: int, endRange: int) =  {
+fn (array) populateArray(startRange, endRange) = {
     ...
-} (array)
-
-b = populateArray(1, 100)
+}
 ```

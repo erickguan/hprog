@@ -233,13 +233,22 @@ func (vm *VM) run() INTER_RESULT {
 				return INTER_RUNTIME_ERROR
 			}
 			vm.vstack.Push(v)
+		case codes.INSTRUC_SET_DECL_LOCAL:
+			index := (vm.Move()).(uint)
+			v, _ := vm.vstack.Peek(0)
+			vm.vstack.Sarray[index] = v
+		case codes.INSTRUC_GET_DECL_LOCAL:
+			index := (vm.Move()).(uint)
+			vm.vstack.Push(vm.vstack.Sarray[index])
 		case codes.INSTRUC_PRINT:
+			fmt.Print("PRINT, ")
 			value.PrintValue(vm.vstack.Pop())
 			fmt.Printf("\n")
 		case codes.INSTRUC_POP:
 			peek, _ := vm.vstack.Peek(0)
 			// BUG: nil nil nil on new line
 			vm.vstack.Pop()
+			fmt.Print("POP, ")
 			value.PrintValue(peek)
 			fmt.Printf("\n")
 		case codes.INSTRUC_RETURN:
@@ -251,7 +260,11 @@ func (vm *VM) run() INTER_RESULT {
 
 func Compile(source string, chk *chunk.Chunk) INTER_RESULT {
 	lex := lexer.Init(source)
-	comp := parser.Compiler{Locals: make([]parser.Local, MAX_LOCALS_SIZE)}
+	comp := parser.Compiler{
+		Locals:     make([]*parser.Local, MAX_LOCALS_SIZE),
+		LocalCount: 0,
+		ScopeDepth: 0,
+	}
 	p := parser.Init(lex, chk, &comp)
 
 	p.Advance()

@@ -52,7 +52,6 @@ func (lex *Lexer) peek() rune {
 }
 
 func (lex *Lexer) setRequiresSemi(required bool) {
-	fmt.Println(required)
 	lex.requiresSemi = required
 }
 
@@ -215,7 +214,6 @@ func fullScan(lex *Lexer) stateFunc {
 			case '\n':
 				lex.line += 1
 				if lex.requiresSemi == true {
-					fmt.Println("AAA")
 					lex.emit(token.SEMICOLON)
 				}
 				lex.trimNewline()

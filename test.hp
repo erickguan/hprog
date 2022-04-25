@@ -1,26 +1,10 @@
-decl a = (True == False)
-print(a)
-
-
-
 
 {
-
-decl b = 1231
-
-
-
-print(b)
+    decl a = 1
+    {
+        decl a = 123
+        print(a)
+    }
+    print(a)
 }
 
-decl h = 123
-a = 123
-a = (True == False)
-print( (1 == 1))
-print()
-
-print("" == "")
-
-#print(b ="AAA")
-print(   a=a)
-print(a)

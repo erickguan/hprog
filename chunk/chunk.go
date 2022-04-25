@@ -42,6 +42,12 @@ func PrintConstant(name string, chunk *Chunk, offset uint) uint {
 	return offset + 2
 }
 
+func ByteInstruction(name string, chunk *Chunk, offset uint) uint {
+	slot := chunk.Code[offset+1].(uint)
+	fmt.Printf("%-16s %4d\n", name, slot)
+	return offset + 2
+}
+
 func DissasInstruction(chunk *Chunk, offset uint) uint {
 	fmt.Printf("%04d ", offset)
 	fmt.Printf("%4d ", chunk.Lines[offset])
@@ -86,6 +92,10 @@ func DissasInstruction(chunk *Chunk, offset uint) uint {
 		return PrintConstant("INSTRUC_SET_DECL_GLOBAL", chunk, offset)
 	case codes.INSTRUC_GET_DECL_GLOBAL:
 		return PrintConstant("INSTRUC_GET_DECL_GLOBAL", chunk, offset)
+	case codes.INSTRUC_SET_DECL_LOCAL:
+		return ByteInstruction("INSTRUC_SET_DECL_LOCAL", chunk, offset)
+	case codes.INSTRUC_GET_DECL_LOCAL:
+		return ByteInstruction("INSTRUC_GET_DECL_LOCAL", chunk, offset)
 	}
 	// NOTE: should never reach!
 	return 0
